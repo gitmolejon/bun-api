@@ -4,9 +4,18 @@ import { swagger } from '@elysiajs/swagger'
 import { calculateEstimatePrice } from './calculate-price'
 import { ServiceType, VehicleType } from "./types";
 
+const API_KEY = process.env.API_KEY || false;
+
 const app = new Elysia()
   .use(swagger())
-  .post('/quote', async ({ body }) => {
+  .get('/', () => {
+    return "Go to /swagger to see the API documentation"
+  })
+  .post('/quote', async ({ body, headers }) => {
+    if (API_KEY && headers['authorization'] !== `Bearer ${API_KEY}`) {
+      return { error: "Unauthorized" };
+    }
+    
     console.log("Body: ", body);
     const departureDateTime = new Date(body.departureDateTime);
     const arrivalDateTime = body.arrivalDateTime ? new Date(body.arrivalDateTime) : undefined;
