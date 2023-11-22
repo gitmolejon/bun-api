@@ -351,7 +351,7 @@ export function calculateAtDisposalPrice(
 
     console.log(`⏳ Total hours: ${TOTAL_HOURS}`);
 
-    if (zoneLevel = ZoneLevel.HARD || zoneLevel == ZoneLevel.VERY_HARD) {
+    if (zoneLevel == ZoneLevel.HARD || zoneLevel == ZoneLevel.VERY_HARD) {
         if (isLuxury) {
             if (pax <= 3) {
                 if (TOTAL_HOURS <= 7) {
