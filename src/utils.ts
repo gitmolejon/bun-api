@@ -435,11 +435,14 @@ export function calculateAtDisposalPrice(
             (pax <= 18 && island != Island.LP)
             || (pax <= MAX_MICROBUS_PAX_CAPACITY_AT_LA_PALMA && island == Island.LP)
         ) {
+            console.log('🐛 Entra en la linea 437')
+            console.log('🐛 resultado es -> ', TOTAL_HOURS <= 4)
             if (TOTAL_HOURS <= 4) {
                 return 240;
             } else if (TOTAL_HOURS <= 8) {
                 return 360;
             } else {
+                console.log('🐛 Entra en el else')
                 return 360 + (TOTAL_HOURS - 8) * 36;
             }
         } else if (pax <= 30) {
