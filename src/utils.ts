@@ -351,6 +351,7 @@ export function calculateAtDisposalPrice(
 
     console.log(`⏳ Total hours: ${TOTAL_HOURS}`);
     console.log('🐛 isLuxury -> ', isLuxury);
+    console.log('🐛 zoneLevel -> ', zoneLevel);
 
     if (zoneLevel = ZoneLevel.HARD || zoneLevel == ZoneLevel.VERY_HARD) {
         console.log("🐛 Entra en la linea 356")
