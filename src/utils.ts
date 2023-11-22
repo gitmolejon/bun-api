@@ -350,8 +350,10 @@ export function calculateAtDisposalPrice(
     const TOTAL_HOURS: number = (arrivalDateTime.getTime() - departureDateTime.getTime()) / 1000 / 60 / 60;
 
     console.log(`⏳ Total hours: ${TOTAL_HOURS}`);
+    console.log('🐛 isLuxury -> ', isLuxury);
 
     if (zoneLevel = ZoneLevel.HARD || zoneLevel == ZoneLevel.VERY_HARD) {
+        console.log("🐛 Entra en la linea 356")
         if (isLuxury) {
             if (pax <= 3) {
                 if (TOTAL_HOURS <= 7) {
