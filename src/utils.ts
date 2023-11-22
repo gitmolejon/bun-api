@@ -353,7 +353,7 @@ export function calculateAtDisposalPrice(
     console.log('🐛 isLuxury -> ', isLuxury);
     console.log('🐛 zoneLevel -> ', zoneLevel);
 
-    if (zoneLevel = ZoneLevel.HARD || zoneLevel == ZoneLevel.VERY_HARD) {
+    if (zoneLevel == ZoneLevel.HARD || zoneLevel == ZoneLevel.VERY_HARD) {
         console.log("🐛 Entra en la linea 356")
         if (isLuxury) {
             if (pax <= 3) {
