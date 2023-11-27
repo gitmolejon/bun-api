@@ -9,6 +9,7 @@ RUN bun install --production
 
 COPY src src
 COPY db db
+COPY migrations migrations
 COPY tsconfig.json .
 
 ARG NODE_ENV
