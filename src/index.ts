@@ -1,10 +1,16 @@
 import { Elysia, t } from "elysia";
 import { swagger } from '@elysiajs/swagger'
+import { Database } from "bun:sqlite";
+import { migrate } from './migration'
+import { getMigrations } from './migrator'
 
 import { calculateEstimatePrice } from './calculate-price'
 import { ServiceType, VehicleType } from "./types";
 
 const API_KEY = process.env.API_KEY || false;
+
+const db = new Database(`db/data.sqlite`, { create: true })
+migrate(db, getMigrations('./migrations'))
 
 const app = new Elysia()
   .use(swagger())
@@ -21,11 +27,11 @@ const app = new Elysia()
     const arrivalDateTime = body.arrivalDateTime ? new Date(body.arrivalDateTime) : undefined;
     const originCoordinates = body.originCoordinates as [number, number];
     const destinationCoordinates = body.destinationCoordinates as [number, number];
-    const result = await calculateEstimatePrice({ ...body, departureDateTime, arrivalDateTime, originCoordinates, destinationCoordinates });
+    const result = await calculateEstimatePrice({ ...body, departureDateTime, arrivalDateTime, originCoordinates, destinationCoordinates }, db);
     if (result > 0)
-      return { price: result };
+      return { price: result, time: console.timeEnd("quote") };
     else
-      return { error: "No se ha podido calcular el precio" };
+      return { error: "No se ha podido calcular el precio", time: console.timeEnd("quote") };
   }, {
     body: t.Object({
       serviceType: t.Enum(ServiceType),

@@ -1,3 +1,4 @@
+import Database from 'bun:sqlite';
 import {
     Parameters,
     Airport,
@@ -1466,7 +1467,8 @@ const ISLAND_ZONE_POLYGONS: { [key in Island]: Coordinates[]} = {
 }
 
 export async function calculateEstimatePrice(
-    parameters: Parameters
+    parameters: Parameters,
+    db: Database
 ): Promise<number> {
     const {
         serviceType,
@@ -1496,14 +1498,14 @@ export async function calculateEstimatePrice(
     const zoneLevel: ZoneLevel = calculateZoneLevel(originCoordinates, destinationCoordinates, HARD_ZONE_POLYGONS, VERY_HARD_ZONE_POLYGONS);
     const dayTime: DayTime = calculateDayTime(departureDateTime);
     const isLuxury: boolean = calculateIsLuxury(vehicleType);
-    const nearestAirport: Airport = await calculateNearestAirport(originCoordinates, island, AIRPORT_COORDINATES, ISLANDS_ROUND_ZONE_POLYGONS);
+    const nearestAirport: Airport = await calculateNearestAirport(originCoordinates, island, AIRPORT_COORDINATES, ISLANDS_ROUND_ZONE_POLYGONS, db);
 
     console.log(`👁️ Island is ${island} / Zone level is ${zoneLevel} / Day time is ${dayTime} / ${isLuxury ? 'Is luxury' : 'Is not luxury'} / Nearest airport is ${nearestAirport}`)
 
     if (serviceType == ServiceType.PRIVADO) {
 
         let kilometersHours: number = 0;
-        const reducedKMH = await calculateReducedKMH(originCoordinates, destinationCoordinates, island, SHUTTLE_ZONE_POLYGONS)
+        const reducedKMH = await calculateReducedKMH(originCoordinates, destinationCoordinates, island, SHUTTLE_ZONE_POLYGONS, db)
         const isReduced: boolean = reducedKMH.isReduced;
 
         if (isReduced) {
@@ -1513,7 +1515,7 @@ export async function calculateEstimatePrice(
             console.log(`Is reduced and 🚌 Kilometers are ${routeKilometers} / Hours are ${routeHours} / KilometersHours are ${kilometersHours}`)
         } else {
             const customRoute = calculateCustomRoute(originCoordinates, destinationCoordinates, island, serviceType, nearestAirport, AIRPORT_COORDINATES, ISLANDS_ROUND_ZONE_POLYGONS);
-            const { kilometers: routeKilometers, hours: routeHours } = await calculateKilometersBetweenPoints(customRoute);
+            const { kilometers: routeKilometers, hours: routeHours } = await calculateKilometersBetweenPoints(customRoute, db);
             kilometersHours = routeKilometers * routeHours;
             console.log(`Is not reduced and 🚌 Kilometers are ${routeKilometers} / Hours are ${routeHours} / KilometersHours are ${kilometersHours}`)
         }

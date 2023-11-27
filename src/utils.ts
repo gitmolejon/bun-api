@@ -10,6 +10,7 @@ import {
     PriceThreshold
 } from "./types";
 import getRouteInfo from "./google-maps-api";
+import Database from "bun:sqlite";
 
 function reversePointsOrder(points: Coordinates[]) {
     return points.map(point => [point[1], point[0]]);
@@ -134,8 +135,8 @@ export function calculateZoneLevel(origin: Coordinates, destination: Coordinates
     return ZoneLevel.NORMAL;
 }
 
-export async function calculateKilometersBetweenPoints(route: Coordinates[]): Promise<{ kilometers: number, hours: number }> {
-    const result = await getRouteInfo(route); // This can be Google Maps API or OSRM API.
+export async function calculateKilometersBetweenPoints(route: Coordinates[], db: Database): Promise<{ kilometers: number, hours: number }> {
+    const result = await getRouteInfoCached(route, db);
     return result
 }
 
@@ -143,7 +144,8 @@ export async function calculateNearestAirport(
     origin: Coordinates,
     island: Island,
     airportCoordinates: { [key in Airport]: Coordinates },
-    islandsRoundZonePolygons: Partial<{ [key in Island]: Partial<{ [key in CardinalPoint]: Coordinates[] }> }>): Promise<Airport> {
+    islandsRoundZonePolygons: Partial<{ [key in Island]: Partial<{ [key in CardinalPoint]: Coordinates[] }> }>,
+    db: Database): Promise<Airport> {
 
     if (island == Island.GC) {
         return Airport.LPA;
@@ -159,8 +161,8 @@ export async function calculateNearestAirport(
         }
         try {
             const [tfnResult, tfsResult] = await Promise.all([
-                getRouteInfo([origin, airportCoordinates.TNF]),
-                getRouteInfo([origin, airportCoordinates.TNS])
+                getRouteInfoCached([origin, airportCoordinates.TNF], db),
+                getRouteInfoCached([origin, airportCoordinates.TNS], db)
             ]);
             if (tfnResult.hours < tfsResult.hours) { // TODO: Check if use hours or km
                 return Airport.TNF;
@@ -290,11 +292,12 @@ export async function calculateReducedKMH(
     origin: Coordinates,
     destination: Coordinates,
     island: Island,
-    shuttleZones: Coordinates[][]
+    shuttleZones: Coordinates[][],
+    db: Database
 ): Promise<{ isReduced: boolean, kilometers: number, hours: number }> {
 
     if (isPointInAnyPolygon(origin, shuttleZones) || isPointInAnyPolygon(destination, shuttleZones)) {
-        const { kilometers, hours } = await calculateKilometersBetweenPoints([origin, destination])
+        const { kilometers, hours } = await calculateKilometersBetweenPoints([origin, destination], db)
         const kilometersHours = kilometers * hours;
 
         if (island == Island.GC && kilometersHours <= 7) {
@@ -845,3 +848,19 @@ export function calculateIslandFromCoordinates(coordinates: Coordinates, ISLANDS
     return Island.GC;
 }
 
+async function getRouteInfoCached(route: Coordinates[], db: Database): Promise<{ kilometers: number, hours: number }> {
+    const query = db.query(`SELECT kilometers, hours FROM routes WHERE coordinates = '${route}'`);
+    const result = query.get() as { kilometers: number, hours: number } | undefined;
+    if (result) {
+        console.log('📦 Cached route!')
+        return {kilometers: result.kilometers, hours: result.hours};
+    }
+
+    const {kilometers, hours} = await getRouteInfo(route);
+
+    db.exec(`INSERT INTO routes (coordinates, kilometers, hours)
+        VALUES ('${route}', ${kilometers}, ${hours})`);
+    console.log('🎁 New route cached!')
+
+    return {kilometers, hours};
+}
