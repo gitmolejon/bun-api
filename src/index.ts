@@ -28,10 +28,10 @@ const app = new Elysia()
     const originCoordinates = body.originCoordinates as [number, number];
     const destinationCoordinates = body.destinationCoordinates as [number, number];
     const result = await calculateEstimatePrice({ ...body, departureDateTime, arrivalDateTime, originCoordinates, destinationCoordinates }, db);
-    if (result > 0)
-      return { price: result, time: console.timeEnd("quote") };
+    if (result.price > 0)
+      return { price: result.price, metadata: result.metadata };
     else
-      return { error: "No se ha podido calcular el precio", time: console.timeEnd("quote") };
+      return { error: "No se ha podido calcular el precio" };
   }, {
     body: t.Object({
       serviceType: t.Enum(ServiceType),

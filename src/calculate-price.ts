@@ -1469,7 +1469,7 @@ const ISLAND_ZONE_POLYGONS: { [key in Island]: Coordinates[]} = {
 export async function calculateEstimatePrice(
     parameters: Parameters,
     db: Database
-): Promise<number> {
+): Promise<{price: number, metadata: {[key: string]: any}}> {
     const {
         serviceType,
         departureDateTime,
@@ -1489,10 +1489,12 @@ export async function calculateEstimatePrice(
 
     if (serviceType == ServiceType.A_DISPOSICION && !arrivalDateTime) {
         console.error("There is no arrivalDateTime and the service is 'A Disposicion'")
-        return -1;
+        return{price: -1, metadata: {}};
     }
 
     let priceWith20: number = 0;
+
+    const metadata: { [key: string]: any } = {};
 
     const island: Island = calculateIslandFromCoordinates(originCoordinates, ISLAND_ZONE_POLYGONS);
     const zoneLevel: ZoneLevel = calculateZoneLevel(originCoordinates, destinationCoordinates, HARD_ZONE_POLYGONS, VERY_HARD_ZONE_POLYGONS);
@@ -1500,24 +1502,42 @@ export async function calculateEstimatePrice(
     const isLuxury: boolean = calculateIsLuxury(vehicleType);
     const nearestAirport: Airport = await calculateNearestAirport(originCoordinates, island, AIRPORT_COORDINATES, ISLANDS_ROUND_ZONE_POLYGONS, db);
 
+    metadata['island'] = island;
+    metadata['zoneLevel'] = zoneLevel;
+    metadata['dayTime'] = dayTime;
+    metadata['isLuxury'] = isLuxury;
+    metadata['nearestAirport'] = nearestAirport;
+
     console.log(`👁️ Island is ${island} / Zone level is ${zoneLevel} / Day time is ${dayTime} / ${isLuxury ? 'Is luxury' : 'Is not luxury'} / Nearest airport is ${nearestAirport}`)
 
     if (serviceType == ServiceType.PRIVADO) {
 
+        metadata['serviceType'] = 'Privado';
+
         let kilometersHours: number = 0;
         const reducedKMH = await calculateReducedKMH(originCoordinates, destinationCoordinates, island, SHUTTLE_ZONE_POLYGONS, db)
         const isReduced: boolean = reducedKMH.isReduced;
+
+        metadata['isReduced'] = isReduced;
 
         if (isReduced) {
             const routeKilometers = reducedKMH.kilometers;
             const routeHours = reducedKMH.hours;
             kilometersHours = routeKilometers * routeHours;
             console.log(`Is reduced and 🚌 Kilometers are ${routeKilometers} / Hours are ${routeHours} / KilometersHours are ${kilometersHours}`)
+
+            metadata['routeKilometers'] = routeKilometers;
+            metadata['routeHours'] = routeHours;
+            metadata['kilometersHours'] = kilometersHours;
         } else {
             const customRoute = calculateCustomRoute(originCoordinates, destinationCoordinates, island, serviceType, nearestAirport, AIRPORT_COORDINATES, ISLANDS_ROUND_ZONE_POLYGONS);
             const { kilometers: routeKilometers, hours: routeHours } = await calculateKilometersBetweenPoints(customRoute, db);
             kilometersHours = routeKilometers * routeHours;
             console.log(`Is not reduced and 🚌 Kilometers are ${routeKilometers} / Hours are ${routeHours} / KilometersHours are ${kilometersHours}`)
+
+            metadata['routeKilometers'] = routeKilometers;
+            metadata['routeHours'] = routeHours;
+            metadata['kilometersHours'] = kilometersHours;
         }
 
         priceWith20 = calculateModelPrice(
@@ -1533,6 +1553,7 @@ export async function calculateEstimatePrice(
         )
 
     } else if (serviceType == ServiceType.A_DISPOSICION && arrivalDateTime) {
+        metadata['serviceType'] = 'A Disposicion';
         priceWith20 = calculateAtDisposalPrice(
             pax,
             departureDateTime,
@@ -1556,7 +1577,10 @@ export async function calculateEstimatePrice(
 
     console.log(`💰 Price with rate is ${priceWithRate} and extra luggage price is ${extraLuggage}`)
 
+    metadata['priceWithRate'] = priceWithRate;
+    metadata['extraLuggagePrice'] = extraLuggagePrice;
+
     // TODO: Add Taxes
 
-    return priceWithRate + extraLuggagePrice;
+    return {price: priceWithRate + extraLuggagePrice, metadata: metadata};
 }
