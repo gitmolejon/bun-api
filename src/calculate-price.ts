@@ -25,6 +25,7 @@ import {
     calculatePriceLuggage,
     isPointInPolygon,
     calculateIslandFromCoordinates,
+    isPointInAnyPolygon,
 } from './utils';
 
 
@@ -1514,8 +1515,12 @@ export async function calculateEstimatePrice(
 
         metadata['serviceType'] = 'Privado';
 
+        const isShuttleZone: boolean = isPointInAnyPolygon(originCoordinates, SHUTTLE_ZONE_POLYGONS) || isPointInAnyPolygon(destinationCoordinates, SHUTTLE_ZONE_POLYGONS);
+
+        metadata['isShuttleZone'] = isShuttleZone;
+
         let kilometersHours: number = 0;
-        const reducedKMH = await calculateReducedKMH(originCoordinates, destinationCoordinates, island, SHUTTLE_ZONE_POLYGONS, db)
+        const reducedKMH = await calculateReducedKMH(originCoordinates, destinationCoordinates, island, isShuttleZone, db)
         const isReduced: boolean = reducedKMH.isReduced;
 
         metadata['isReduced'] = isReduced;
@@ -1530,7 +1535,11 @@ export async function calculateEstimatePrice(
             metadata['routeHours'] = routeHours;
             metadata['kilometersHours'] = kilometersHours;
         } else {
-            const customRoute = calculateCustomRoute(originCoordinates, destinationCoordinates, island, serviceType, nearestAirport, AIRPORT_COORDINATES, ISLANDS_ROUND_ZONE_POLYGONS);
+            const {coordinates: customRoute, roundTrip: roundTrip} = calculateCustomRoute(originCoordinates, destinationCoordinates, island, serviceType, nearestAirport, AIRPORT_COORDINATES, ISLANDS_ROUND_ZONE_POLYGONS);
+
+            metadata['customRoute'] = customRoute;
+            metadata['roundTrip'] = roundTrip;
+            
             const { kilometers: routeKilometers, hours: routeHours } = await calculateKilometersBetweenPoints(customRoute, db);
             kilometersHours = routeKilometers * routeHours;
             console.log(`Is not reduced and 🚌 Kilometers are ${routeKilometers} / Hours are ${routeHours} / KilometersHours are ${kilometersHours}`)

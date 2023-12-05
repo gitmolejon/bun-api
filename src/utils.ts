@@ -186,9 +186,10 @@ export function calculateCustomRoute(
     serviceType: ServiceType,
     nearestAirport: Airport,
     airportCoordinates: { [key in Airport]: Coordinates },
-    islandsRoundZonePolygons: Partial<{ [key in Island]: Partial<{ [key in CardinalPoint]: Coordinates[] }> }>): Coordinates[] {
+    islandsRoundZonePolygons: Partial<{ [key in Island]: Partial<{ [key in CardinalPoint]: Coordinates[] }> }>): {coordinates: Coordinates[], roundTrip: boolean} {
 
     var route: Coordinates[] = [];
+    var roundTrip: boolean = false;
     if (serviceType == ServiceType.PRIVADO) {
         if (island == Island.GC
             && islandsRoundZonePolygons.GC
@@ -201,6 +202,7 @@ export function calculateCustomRoute(
                 || (isPointInPolygon(origin, islandsRoundZonePolygons.GC.WEST) && isPointInPolygon(destination, islandsRoundZonePolygons.GC.NORTH))
             ) {
                 console.log('🌏 Round island!');
+                roundTrip = true;
                 route.push(airportCoordinates.LPA);
             }
             route.push(destination);
@@ -214,11 +216,13 @@ export function calculateCustomRoute(
             route.push(origin);
             if (isPointInPolygon(origin, islandsRoundZonePolygons.TNF.NORTH) && isPointInPolygon(destination, islandsRoundZonePolygons.TNF.SOUTH)) {
                 console.log('🌏 Round island!');
+                roundTrip = true;
                 route.push(airportCoordinates.TNF);
                 route.push(destination)
                 route.push(airportCoordinates.TNF);
             } else if (isPointInPolygon(origin, islandsRoundZonePolygons.TNF.NORTH) && isPointInPolygon(destination, islandsRoundZonePolygons.TNF.WEST)) {
                 console.log('🌏 Round island!');
+                roundTrip = true;
                 route.push(airportCoordinates.TNF);
                 route.push(airportCoordinates.TNS);
                 route.push(destination)
@@ -226,12 +230,14 @@ export function calculateCustomRoute(
                 route.push(airportCoordinates.TNF);
             } else if (isPointInPolygon(origin, islandsRoundZonePolygons.TNF.SOUTH) && isPointInPolygon(destination, islandsRoundZonePolygons.TNF.NORTH)) {
                 console.log('🌏 Round island!');
+                roundTrip = true;
                 route.push(airportCoordinates.TNF);
                 route.push(destination)
                 route.push(airportCoordinates.TNF);
                 route.push(airportCoordinates.TNS);
             } else if (isPointInPolygon(origin, islandsRoundZonePolygons.TNF.WEST) && isPointInPolygon(destination, islandsRoundZonePolygons.TNF.NORTH)) {
                 console.log('🌏 Round island!');
+                roundTrip = true;
                 route.push(airportCoordinates.TNS);
                 route.push(airportCoordinates.TNF);
                 route.push(destination)
@@ -252,7 +258,7 @@ export function calculateCustomRoute(
             route.push(airportCoordinates.ACE);
         }
     }
-    return route;
+    return {coordinates: route, roundTrip: roundTrip};
 }
 
 export function calculateDayTime(departureDateTime: Date): DayTime {
@@ -292,11 +298,11 @@ export async function calculateReducedKMH(
     origin: Coordinates,
     destination: Coordinates,
     island: Island,
-    shuttleZones: Coordinates[][],
+    isShuttleZone: boolean,
     db: Database
 ): Promise<{ isReduced: boolean, kilometers: number, hours: number }> {
 
-    if (isPointInAnyPolygon(origin, shuttleZones) || isPointInAnyPolygon(destination, shuttleZones)) {
+    if (isShuttleZone) {
         const { kilometers, hours } = await calculateKilometersBetweenPoints([origin, destination], db)
         const kilometersHours = kilometers * hours;
 
