@@ -1,3 +1,5 @@
+import { t } from "elysia";
+
 export type Coordinates = [number, number];
 
 export type PriceThreshold = [number, number];
@@ -79,3 +81,32 @@ export interface Constants {
     luggageZonePolygons: Coordinates[][];
     islandZonePolygons: { [key in Island]: Coordinates[] };
 }
+
+const baseObject = {
+    serviceType: t.Enum(ServiceType),
+    departureDateTime: t.String(),
+    arrivalDateTime: t.Optional(t.String()),
+    pax: t.Integer(),
+    originCoordinates: t.Array(t.Number(), { minItems: 2, maxItems: 2 }),
+    destinationCoordinates: t.Array(t.Number(), { minItems: 2, maxItems: 2 }),
+    rate: t.Optional(t.Number()),
+    vehicleType: t.Optional(t.Enum(VehicleType)),
+    kidStroller: t.Optional(t.Integer()),
+    surfBoard: t.Optional(t.Integer()),
+    golfBag: t.Optional(t.Integer()),
+    bike: t.Optional(t.Integer()),
+    specialLuggage: t.Optional(t.Integer()),
+    extraLuggage: t.Optional(t.Integer()),
+    roundTrip: t.Optional(t.Boolean()),
+}
+
+export const bodyObject = t.Object({
+    ...baseObject
+})
+
+export const bodyArrayObject = t.Array(
+    t.Object({
+        ...baseObject,
+        uid: t.String(),
+    })
+)
