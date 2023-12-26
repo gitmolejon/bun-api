@@ -162,12 +162,12 @@ export async function calculateNearestAirport(
         try {
             const [tfnResult, tfsResult] = await Promise.all([
                 getRouteInfoCached([origin, airportCoordinates.TFN], db),
-                getRouteInfoCached([origin, airportCoordinates.TNS], db)
+                getRouteInfoCached([origin, airportCoordinates.TFS], db)
             ]);
             if (tfnResult.hours < tfsResult.hours) { // TODO: Check if use hours or km
                 return Airport.TFN;
             } else {
-                return Airport.TNS;
+                return Airport.TFS;
             }
         } catch (e) {
             console.error("Error on calculateNearestAirport -> ", e);
@@ -224,9 +224,9 @@ export function calculateCustomRoute(
                 console.log('🌏 Round island!');
                 roundTrip = true;
                 route.push(airportCoordinates.TFN);
-                route.push(airportCoordinates.TNS);
+                route.push(airportCoordinates.TFS);
                 route.push(destination)
-                route.push(airportCoordinates.TNS);
+                route.push(airportCoordinates.TFS);
                 route.push(airportCoordinates.TFN);
             } else if (isPointInPolygon(origin, islandsRoundZonePolygons.TNF.SOUTH) && isPointInPolygon(destination, islandsRoundZonePolygons.TNF.NORTH)) {
                 console.log('🌏 Round island!');
@@ -234,15 +234,15 @@ export function calculateCustomRoute(
                 route.push(airportCoordinates.TFN);
                 route.push(destination)
                 route.push(airportCoordinates.TFN);
-                route.push(airportCoordinates.TNS);
+                route.push(airportCoordinates.TFS);
             } else if (isPointInPolygon(origin, islandsRoundZonePolygons.TNF.WEST) && isPointInPolygon(destination, islandsRoundZonePolygons.TNF.NORTH)) {
                 console.log('🌏 Round island!');
                 roundTrip = true;
-                route.push(airportCoordinates.TNS);
+                route.push(airportCoordinates.TFS);
                 route.push(airportCoordinates.TFN);
                 route.push(destination)
                 route.push(airportCoordinates.TFN);
-                route.push(airportCoordinates.TNS);
+                route.push(airportCoordinates.TFS);
             }
             route.push(destination);
             route.push(airportCoordinates[nearestAirport]);
@@ -547,7 +547,7 @@ export function calculatePriceKMH(
 
             return calculateExtraPrice9to18(pax, kilometersHours, basePrice, 700);
 
-        } else if (nearestAiport == Airport.TNS) {
+        } else if (nearestAiport == Airport.TFS) {
 
             if (isReducedPrice) {
                 if (kilometersHours <= 5) {
@@ -679,7 +679,7 @@ export function calculatePriceKMH(
             }
 
             return calculateExtraPrice1to8(pax, kilometersHours, basePrice, isLuxury, 700);
-        } else if (nearestAiport == Airport.TNS) {
+        } else if (nearestAiport == Airport.TFS) {
 
             if (isReducedPrice) {
                 if (kilometersHours <= 5) {
@@ -976,7 +976,7 @@ export async function getAirportsPricesForShuttle(): Promise<{ [key in Airport]:
     } = {
         [Airport.LPA]: {},
         [Airport.TFN]: {},
-        [Airport.TNS]: {},
+        [Airport.TFS]: {},
         [Airport.ACE]: {},
         [Airport.FUE]: {},
         [Airport.SPC]: {},

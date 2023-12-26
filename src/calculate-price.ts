@@ -40,7 +40,7 @@ const AIRPORT_COORDINATES: { [key in Airport]: Coordinates } = {
     [Airport.SPC]: [28.626478, -17.755611],
     [Airport.GMZ]: [28.029722, -17.214167],
     [Airport.TFN]: [28.4845157,-16.3459953],
-    [Airport.TNS]: [28.044475, -16.572488],
+    [Airport.TFS]: [28.044475, -16.572488],
     [Airport.LPA]: [27.931886, -15.386586],
     [Airport.ACE]: [28.945464, -13.605225],
     [Airport.FUE]: [28.452717, -13.863761],
