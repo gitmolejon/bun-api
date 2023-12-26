@@ -11,6 +11,7 @@ import {
 } from "./types";
 import getRouteInfo from "./google-maps-api";
 import Database from "bun:sqlite";
+import { RAW_PLACES, RAW_PRICES } from "./db_data";
 
 function reversePointsOrder(points: Coordinates[]) {
     return points.map(point => [point[1], point[0]]);
@@ -935,10 +936,8 @@ export function isPlaceSuitableForShuttle(
 
 // TODO: Get info from DB instead of file modified
 export async function getIslandsPlacesForShuttle(): Promise<{ [key in Island]: { coordinates: Coordinates, name: string, zone_id: string }[] }> {
-    const path = "src/lib/raw_places.json";
-    const file = Bun.file(path);
+    const data = RAW_PLACES
 
-    const data = await file.json();
     let transformedData: { [key in Island]: { coordinates: Coordinates, name: string, zone_id: string }[] } = {
         [Island.GC]: [],
         [Island.TNF]: [],
@@ -948,14 +947,13 @@ export async function getIslandsPlacesForShuttle(): Promise<{ [key in Island]: {
     };
 
     // TODO: Transform island from Booker to Island type.
-
-    data.forEach((item: { island: Island; coordinates: string; name: string; zone_id: string; }) => {
+    data.forEach((item: { island: string; coordinates: string; name: string; zone_id: number; }) => {
         let coordinatesArray = item.coordinates.split(',').map(Number);
 
-        transformedData[item.island].push({
+        transformedData[item.island as Island].push({
             coordinates: coordinatesArray as Coordinates,
             name: item.name,
-            zone_id: item.zone_id
+            zone_id: item.zone_id.toString()
         });
     });
 
@@ -964,10 +962,8 @@ export async function getIslandsPlacesForShuttle(): Promise<{ [key in Island]: {
 
 // TODO: Get info from DB instead of file modified
 export async function getAirportsPricesForShuttle(): Promise<{ [key in Airport]: { [key: string]: { price: number; zone_name: string } } }> {
-    const path = "src/lib/raw_prices.json"
-    const file = Bun.file(path);
-
-    const data = await file.json();
+    const data = RAW_PRICES;
+    
     let transformedData: {
         [key in Airport]: {
             [key: string]:
@@ -984,10 +980,10 @@ export async function getAirportsPricesForShuttle(): Promise<{ [key in Airport]:
         [Airport.GMZ]: {},
     };
 
-    data.forEach((item: { island: Island; airport_id: number; zone_id: number; airport: Airport; zone_name: string; price: string }) => {
+    data.forEach((item: { island: string; airport_id: number; zone_id: number; airport: string; zone_name: string; price: string | null }) => {
         try {
-            let price = parseFloat(item.price.replace(',', '.'));
-            transformedData[item.airport][item.zone_id] = {
+            let price = item.price !== null ? parseFloat(item.price.replace(',', '.')) : 0;
+            transformedData[item.airport as Airport][item.zone_id] = {
                 price: price,
                 zone_name: item.zone_name
             };
