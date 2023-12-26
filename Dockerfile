@@ -1,5 +1,5 @@
 # FROM oven/bun:latest
-FROM --platform=arm64 oven/bun:canary
+FROM --platform=amd64 oven/bun:canary
 
 WORKDIR /app
 
