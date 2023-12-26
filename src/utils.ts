@@ -157,21 +157,21 @@ export async function calculateNearestAirport(
         return Airport.SPC;
     } else if (island == Island.TNF) {
         if (islandsRoundZonePolygons.TNF?.NORTH && isPointInPolygon(origin, islandsRoundZonePolygons.TNF.NORTH)) {
-            return Airport.TNF;
+            return Airport.TFN;
         }
         try {
             const [tfnResult, tfsResult] = await Promise.all([
-                getRouteInfoCached([origin, airportCoordinates.TNF], db),
+                getRouteInfoCached([origin, airportCoordinates.TFN], db),
                 getRouteInfoCached([origin, airportCoordinates.TNS], db)
             ]);
             if (tfnResult.hours < tfsResult.hours) { // TODO: Check if use hours or km
-                return Airport.TNF;
+                return Airport.TFN;
             } else {
                 return Airport.TNS;
             }
         } catch (e) {
             console.error("Error on calculateNearestAirport -> ", e);
-            return Airport.TNF;
+            return Airport.TFN;
         }
     }
 
@@ -217,31 +217,31 @@ export function calculateCustomRoute(
             if (isPointInPolygon(origin, islandsRoundZonePolygons.TNF.NORTH) && isPointInPolygon(destination, islandsRoundZonePolygons.TNF.SOUTH)) {
                 console.log('🌏 Round island!');
                 roundTrip = true;
-                route.push(airportCoordinates.TNF);
+                route.push(airportCoordinates.TFN);
                 route.push(destination)
-                route.push(airportCoordinates.TNF);
+                route.push(airportCoordinates.TFN);
             } else if (isPointInPolygon(origin, islandsRoundZonePolygons.TNF.NORTH) && isPointInPolygon(destination, islandsRoundZonePolygons.TNF.WEST)) {
                 console.log('🌏 Round island!');
                 roundTrip = true;
-                route.push(airportCoordinates.TNF);
+                route.push(airportCoordinates.TFN);
                 route.push(airportCoordinates.TNS);
                 route.push(destination)
                 route.push(airportCoordinates.TNS);
-                route.push(airportCoordinates.TNF);
+                route.push(airportCoordinates.TFN);
             } else if (isPointInPolygon(origin, islandsRoundZonePolygons.TNF.SOUTH) && isPointInPolygon(destination, islandsRoundZonePolygons.TNF.NORTH)) {
                 console.log('🌏 Round island!');
                 roundTrip = true;
-                route.push(airportCoordinates.TNF);
+                route.push(airportCoordinates.TFN);
                 route.push(destination)
-                route.push(airportCoordinates.TNF);
+                route.push(airportCoordinates.TFN);
                 route.push(airportCoordinates.TNS);
             } else if (isPointInPolygon(origin, islandsRoundZonePolygons.TNF.WEST) && isPointInPolygon(destination, islandsRoundZonePolygons.TNF.NORTH)) {
                 console.log('🌏 Round island!');
                 roundTrip = true;
                 route.push(airportCoordinates.TNS);
-                route.push(airportCoordinates.TNF);
+                route.push(airportCoordinates.TFN);
                 route.push(destination)
-                route.push(airportCoordinates.TNF);
+                route.push(airportCoordinates.TFN);
                 route.push(airportCoordinates.TNS);
             }
             route.push(destination);
@@ -518,7 +518,7 @@ export function calculatePriceKMH(
 
             return calculateExtraPrice9to18(pax, kilometersHours, basePrice, 355);
 
-        } else if (nearestAiport == Airport.TNF) {
+        } else if (nearestAiport == Airport.TFN) {
 
             if (isReducedPrice) {
                 if (kilometersHours <= 5) {
@@ -652,7 +652,7 @@ export function calculatePriceKMH(
             }
 
             return calculateExtraPrice1to8(pax, kilometersHours, basePrice, isLuxury, 355);
-        } else if (nearestAiport == Airport.TNF) {
+        } else if (nearestAiport == Airport.TFN) {
 
             if (isReducedPrice) {
                 if (kilometersHours <= 5) {
@@ -975,7 +975,7 @@ export async function getAirportsPricesForShuttle(): Promise<{ [key in Airport]:
         }
     } = {
         [Airport.LPA]: {},
-        [Airport.TNF]: {},
+        [Airport.TFN]: {},
         [Airport.TNS]: {},
         [Airport.ACE]: {},
         [Airport.FUE]: {},

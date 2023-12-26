@@ -8,7 +8,7 @@ export enum Airport {
     VDE = "VDE",
     SPC = "SPC",
     GMZ = "GMZ",
-    TNF = "TNF",
+    TFN = "TFN",
     TNS = "TNS",
     LPA = "LPA",
     ACE = "ACE",

@@ -39,7 +39,7 @@ const AIRPORT_COORDINATES: { [key in Airport]: Coordinates } = {
     [Airport.VDE]: [27.814847, -17.887056],
     [Airport.SPC]: [28.626478, -17.755611],
     [Airport.GMZ]: [28.029722, -17.214167],
-    [Airport.TNF]: [28.044475, -16.572488],
+    [Airport.TFN]: [28.4845157,-16.3459953],
     [Airport.TNS]: [28.044475, -16.572488],
     [Airport.LPA]: [27.931886, -15.386586],
     [Airport.ACE]: [28.945464, -13.605225],
@@ -1602,6 +1602,7 @@ export async function calculateEstimatePrice(
                 }
             }
         }
+        console.log('Is not shuttle...')
     }
 
     // TODO: Modify this to calculate the price of luggage with shuttle on the function calculatePriceLuggage
