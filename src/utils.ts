@@ -935,7 +935,7 @@ export function isPlaceSuitableForShuttle(
 
 // TODO: Get info from DB instead of file modified
 export async function getIslandsPlacesForShuttle(): Promise<{ [key in Island]: { coordinates: Coordinates, name: string, zone_id: string }[] }> {
-    const path = "./src/lib/raw_places.json";
+    const path = "src/lib/raw_places.json";
     const file = Bun.file(path);
 
     const data = await file.json();
@@ -964,7 +964,7 @@ export async function getIslandsPlacesForShuttle(): Promise<{ [key in Island]: {
 
 // TODO: Get info from DB instead of file modified
 export async function getAirportsPricesForShuttle(): Promise<{ [key in Airport]: { [key: string]: { price: number; zone_name: string } } }> {
-    const path = "./src/lib/raw_prices.json"
+    const path = "src/lib/raw_prices.json"
     const file = Bun.file(path);
 
     const data = await file.json();
