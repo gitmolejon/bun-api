@@ -26,6 +26,10 @@ import {
     isPointInPolygon,
     calculateIslandFromCoordinates,
     isPointInAnyPolygon,
+    isAirportCloseToCoordinates,
+    isPlaceSuitableForShuttle,
+    getIslandsPlacesForShuttle,
+    getAirportsPricesForShuttle,
 } from './utils';
 
 
@@ -1572,17 +1576,45 @@ export async function calculateEstimatePrice(
             zoneLevel,
             MAX_MICROBUS_PAX_CAPACITY_AT_LA_PALMA
         )
+    } else if (serviceType == ServiceType.SHUTTLE) {
+        const AIRPORT_TRESHOLD = 500;
+
+        const IS_ORIGIN_AIRPORT = isAirportCloseToCoordinates(originCoordinates, AIRPORT_COORDINATES, AIRPORT_TRESHOLD);
+        const IS_DESTINATION_AIRPORT = isAirportCloseToCoordinates(destinationCoordinates, AIRPORT_COORDINATES, AIRPORT_TRESHOLD);
+        
+        if (IS_ORIGIN_AIRPORT || IS_DESTINATION_AIRPORT) {
+            metadata['serviceType'] = 'Shuttle';
+
+            console.log(`🛫 Is SHUTTLE and ${IS_ORIGIN_AIRPORT ? 'origin' : 'destination'} is airport ${IS_ORIGIN_AIRPORT ? IS_ORIGIN_AIRPORT : IS_DESTINATION_AIRPORT}`)
+
+            const ISLAND_PLACES = await getIslandsPlacesForShuttle();
+            const isShuttlePoint = isPlaceSuitableForShuttle(IS_ORIGIN_AIRPORT ? destinationCoordinates : originCoordinates, ISLAND_PLACES[island]);
+            if (isShuttlePoint) {
+
+                metadata['isShuttlePoint'] = isShuttlePoint;
+
+                console.log(`🏨 Is Shuttle point`)
+
+                const AIRPORT_PRICES = await getAirportsPricesForShuttle();
+                const shuttlePaxPrice = AIRPORT_PRICES[nearestAirport][isShuttlePoint];
+                if (shuttlePaxPrice.price) {
+                    priceWith20 = shuttlePaxPrice.price * pax;
+                }
+            }
+        }
     }
 
-    let priceWithRate = (priceWith20 / 1.2) * rate;
-    let extraLuggagePrice = calculatePriceLuggage(
+    // TODO: Modify this to calculate the price of luggage with shuttle on the function calculatePriceLuggage
+    let priceWithRate = serviceType != ServiceType.SHUTTLE ? (priceWith20 / 1.2) * rate : priceWith20;
+    // TODO: Modify this to calculate the price of luggage with shuttle on the function calculatePriceLuggage
+    let extraLuggagePrice = serviceType != ServiceType.SHUTTLE ? calculatePriceLuggage(
         pax,
         isLuxury,
         (kidStroller + surfBoard + golfBag + bike + specialLuggage),
         extraLuggage,
         originCoordinates,
         destinationCoordinates,
-        LUGGAGE_ZONE_POLYGONS);
+        LUGGAGE_ZONE_POLYGONS) : 0;
 
     console.log(`💰 Price with rate is ${priceWithRate} and extra luggage price is ${extraLuggage}`)
 

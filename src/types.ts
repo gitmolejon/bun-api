@@ -18,6 +18,7 @@ export enum Airport {
 export enum ServiceType {
     PRIVADO = "PRIVADO",
     A_DISPOSICION = "A_DISPOSICION", // TODO: Ver si tiene sentido dejarlo
+    SHUTTLE = "SHUTTLE",
 }
 
 export enum Island {

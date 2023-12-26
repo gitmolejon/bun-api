@@ -186,7 +186,7 @@ export function calculateCustomRoute(
     serviceType: ServiceType,
     nearestAirport: Airport,
     airportCoordinates: { [key in Airport]: Coordinates },
-    islandsRoundZonePolygons: Partial<{ [key in Island]: Partial<{ [key in CardinalPoint]: Coordinates[] }> }>): {coordinates: Coordinates[], roundTrip: boolean} {
+    islandsRoundZonePolygons: Partial<{ [key in Island]: Partial<{ [key in CardinalPoint]: Coordinates[] }> }>): { coordinates: Coordinates[], roundTrip: boolean } {
 
     var route: Coordinates[] = [];
     var roundTrip: boolean = false;
@@ -258,7 +258,7 @@ export function calculateCustomRoute(
             route.push(airportCoordinates.ACE);
         }
     }
-    return {coordinates: route, roundTrip: roundTrip};
+    return { coordinates: route, roundTrip: roundTrip };
 }
 
 export function calculateDayTime(departureDateTime: Date): DayTime {
@@ -533,7 +533,7 @@ export function calculatePriceKMH(
                     [60, 138],
                     [90, 144],
                     [150, 156],
-                    [200, 168], 
+                    [200, 168],
                     [350, 180],
                     [450, 192],
                     [550, 204],
@@ -562,7 +562,7 @@ export function calculatePriceKMH(
                     [70, 144],
                     [200, 156],
                     [350, 168],
-                    [550, 180], 
+                    [550, 180],
                     [650, 240],
                     [750, 288],
                     [960, 336],
@@ -585,7 +585,7 @@ export function calculatePriceKMH(
                     [60, 144],
                     [100, 156],
                     [115, 180],
-                    [130, 204], 
+                    [130, 204],
                     [200, 240],
                     [250, 264],
                     [300, 288],
@@ -612,7 +612,7 @@ export function calculatePriceKMH(
                     [190, 156],
                     [300, 168],
                     [420, 180],
-                    [450, 192], 
+                    [450, 192],
                     [480, 204],
                     [510, 216],
                     [540, 240],
@@ -641,7 +641,7 @@ export function calculatePriceKMH(
                     [200, 72],
                     [275, 84],
                     [300, 96],
-                    [340, 108], 
+                    [340, 108],
                     [400, 120],
                     [500, 132],
                     [600, 144],
@@ -667,7 +667,7 @@ export function calculatePriceKMH(
                     [60, 48],
                     [90, 60],
                     [150, 84],
-                    [200, 96], 
+                    [200, 96],
                     [250, 108],
                     [350, 120],
                     [450, 132],
@@ -694,7 +694,7 @@ export function calculatePriceKMH(
                     [70, 54],
                     [120, 60],
                     [150, 72],
-                    [300, 84], 
+                    [300, 84],
                     [350, 108],
                     [550, 120],
                     [650, 132],
@@ -721,7 +721,7 @@ export function calculatePriceKMH(
                     [60, 48],
                     [100, 60],
                     [115, 72],
-                    [130, 84], 
+                    [130, 84],
                     [200, 96],
                     [300, 108],
                     [350, 120],
@@ -746,7 +746,7 @@ export function calculatePriceKMH(
                     [114, 60],
                     [150, 72],
                     [190, 84],
-                    [230, 96], 
+                    [230, 96],
                     [300, 108],
                     [420, 120],
                     [480, 132],
@@ -844,7 +844,7 @@ export function calculatePriceLuggage(pax: number, isLuxury: boolean, otherLugga
     return price;
 }
 
-export function calculateIslandFromCoordinates(coordinates: Coordinates, ISLANDS_POLYGONS: { [key in Island]: Coordinates[]}): Island {
+export function calculateIslandFromCoordinates(coordinates: Coordinates, ISLANDS_POLYGONS: { [key in Island]: Coordinates[] }): Island {
     for (const [island, polygons] of Object.entries(ISLANDS_POLYGONS)) {
         if (isPointInPolygon(coordinates, polygons)) {
             return island as Island;
@@ -859,14 +859,142 @@ async function getRouteInfoCached(route: Coordinates[], db: Database): Promise<{
     const result = query.get() as { kilometers: number, hours: number } | undefined;
     if (result) {
         console.log('📦 Cached route!')
-        return {kilometers: result.kilometers, hours: result.hours};
+        return { kilometers: result.kilometers, hours: result.hours };
     }
 
-    const {kilometers, hours} = await getRouteInfo(route);
+    const { kilometers, hours } = await getRouteInfo(route);
 
     db.exec(`INSERT INTO routes (coordinates, kilometers, hours)
         VALUES ('${route}', ${kilometers}, ${hours})`);
     console.log('🎁 New route cached!')
 
-    return {kilometers, hours};
+    return { kilometers, hours };
+}
+
+function degreesToRadients(degrees: number) {
+    return degrees * (Math.PI / 180);
+}
+
+export function calculateDistanceBetweenCoordinates(origin: Coordinates, destination: Coordinates): number {
+    var radioTierra = 6371; // Radio de la Tierra en kilómetros
+
+    var dLat = degreesToRadients(destination[0] - origin[0]);
+    var dLon = degreesToRadients(destination[1] - origin[1]);
+
+    var a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+        Math.cos(degreesToRadients(origin[0])) * Math.cos(degreesToRadients(destination[0])) *
+        Math.sin(dLon / 2) * Math.sin(dLon / 2);
+
+    var c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    var distancia = radioTierra * c;
+
+    return distancia * 1000; // Distancia en metros
+}
+
+export function isAirportCloseToCoordinates(origin: Coordinates, destinationList: { [key in Airport]: Coordinates }, thresholdInMeters: number = 100): Airport | undefined {
+    for (const [airport, coordinates] of Object.entries(destinationList)) {
+        var distance = calculateDistanceBetweenCoordinates(origin, coordinates);
+        if (distance < thresholdInMeters) {
+            return airport as Airport;
+        }
+    }
+    return undefined;
+}
+
+export function isPlaceSuitableForShuttle(
+    point: Coordinates,
+    destinationList: {
+        coordinates: Coordinates;
+        name: string;
+        zone_id: string;
+    }[],
+    thresholdInMeters: number = 100
+): string | false {
+    let closestPlace: {
+        coordinates: Coordinates;
+        name: string;
+        zone_id: string;
+    } | undefined;
+    let minDistance = Infinity;
+
+    destinationList.forEach((place) => {
+        var distance = calculateDistanceBetweenCoordinates(point, place.coordinates);
+        if (distance < thresholdInMeters && distance < minDistance) {
+            closestPlace = place;
+            minDistance = distance;
+        }
+    });
+
+    if (closestPlace) {
+        console.log(`🚐 Closest shuttle place found! ${closestPlace.name}`);
+        return closestPlace.zone_id;
+    }
+
+    return false;
+}
+
+// TODO: Get info from DB instead of file modified
+export async function getIslandsPlacesForShuttle(): Promise<{ [key in Island]: { coordinates: Coordinates, name: string, zone_id: string }[] }> {
+    const path = "./src/lib/raw_places.json";
+    const file = Bun.file(path);
+
+    const data = await file.json();
+    let transformedData: { [key in Island]: { coordinates: Coordinates, name: string, zone_id: string }[] } = {
+        [Island.GC]: [],
+        [Island.TNF]: [],
+        [Island.LP]: [],
+        [Island.FTV]: [],
+        [Island.LNZ]: []
+    };
+
+    // TODO: Transform island from Booker to Island type.
+
+    data.forEach((item: { island: Island; coordinates: string; name: string; zone_id: string; }) => {
+        let coordinatesArray = item.coordinates.split(',').map(Number);
+
+        transformedData[item.island].push({
+            coordinates: coordinatesArray as Coordinates,
+            name: item.name,
+            zone_id: item.zone_id
+        });
+    });
+
+    return transformedData;
+}
+
+// TODO: Get info from DB instead of file modified
+export async function getAirportsPricesForShuttle(): Promise<{ [key in Airport]: { [key: string]: { price: number; zone_name: string } } }> {
+    const path = "./src/lib/raw_prices.json"
+    const file = Bun.file(path);
+
+    const data = await file.json();
+    let transformedData: {
+        [key in Airport]: {
+            [key: string]:
+            { price: number, zone_name: string }
+        }
+    } = {
+        [Airport.LPA]: {},
+        [Airport.TNF]: {},
+        [Airport.TNS]: {},
+        [Airport.ACE]: {},
+        [Airport.FUE]: {},
+        [Airport.SPC]: {},
+        [Airport.VDE]: {},
+        [Airport.GMZ]: {},
+    };
+
+    data.forEach((item: { island: Island; airport_id: number; zone_id: number; airport: Airport; zone_name: string; price: string }) => {
+        try {
+            let price = parseFloat(item.price.replace(',', '.'));
+            transformedData[item.airport][item.zone_id] = {
+                price: price,
+                zone_name: item.zone_name
+            };
+        } catch (e) {
+            
+        }
+    });
+
+    return transformedData;
 }

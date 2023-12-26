@@ -7,7 +7,7 @@ import { migrate } from './migration'
 import { getMigrations } from './migrator'
 
 import { calculateEstimatePrice } from './calculate-price'
-import { bodyArrayObject, bodyObject } from "./types";
+import { ServiceType, bodyArrayObject, bodyObject } from "./types";
 
 const API_KEY = process.env.API_KEY || false;
 
@@ -18,6 +18,9 @@ const app = new Elysia()
   .use(swagger())
   .get('/', () => {
     return "Go to /swagger to see the API documentation"
+  })
+  .get('/test', async () => {
+    return "OK"
   })
   .post('/quote', async ({ body, headers }) => {
     if (API_KEY && headers['authorization'] !== `Bearer ${API_KEY}`) {
@@ -77,9 +80,13 @@ const app = new Elysia()
       const destinationCoordinates = item.destinationCoordinates as [number, number];
       const result = await calculateEstimatePrice({ ...item, departureDateTime, arrivalDateTime, originCoordinates, destinationCoordinates }, db);
 
+      console.log('🐛 [BORRAR] ->', 'El resultado obtenido es ', result)
+
       console.log("Round trip: ", item.roundTrip)
       if (item.roundTrip) {
-        if (arrivalDateTime && ['PRIVADO'].includes(item.serviceType)) {
+        if (item.serviceType == ServiceType.SHUTTLE) {
+          result.price *= 2;
+        } else if (arrivalDateTime && [ServiceType.PRIVADO].includes(item.serviceType)) {
           const resultRoundTrip = await calculateEstimatePrice({
             ...item,
             departureDateTime: arrivalDateTime,
