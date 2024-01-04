@@ -19,9 +19,6 @@ const app = new Elysia()
   .get('/', () => {
     return "Go to /swagger to see the API documentation"
   })
-  .get('/test', async () => {
-    return "OK"
-  })
   .post('/quote', async ({ body, headers }) => {
     if (API_KEY && headers['authorization'] !== `Bearer ${API_KEY}`) {
       return { error: "Unauthorized" };

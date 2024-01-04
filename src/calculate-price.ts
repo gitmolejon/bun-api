@@ -36,14 +36,24 @@ import {
 const MAX_MICROBUS_PAX_CAPACITY_AT_LA_PALMA: number = 15;
 
 const AIRPORT_COORDINATES: { [key in Airport]: Coordinates } = {
+    // FIRST AIRPORTS:
+    // [Airport.VDE]: [27.814847, -17.887056],
+    // [Airport.SPC]: [28.626478, -17.755611],
+    // [Airport.GMZ]: [28.029722, -17.214167],
+    // [Airport.TFN]: [28.4845157,-16.3459953],
+    // [Airport.TFS]: [28.044475, -16.572488],
+    // [Airport.LPA]: [27.931886, -15.386586],
+    // [Airport.ACE]: [28.945464, -13.605225],
+    // [Airport.FUE]: [28.452717, -13.863761],
+    // UPDATED AIRPORTS:
     [Airport.VDE]: [27.814847, -17.887056],
-    [Airport.SPC]: [28.626478, -17.755611],
+    [Airport.SPC]: [28.62564952005458, -17.75511236939051],
     [Airport.GMZ]: [28.029722, -17.214167],
-    [Airport.TFN]: [28.4845157,-16.3459953],
-    [Airport.TFS]: [28.044475, -16.572488],
-    [Airport.LPA]: [27.931886, -15.386586],
-    [Airport.ACE]: [28.945464, -13.605225],
-    [Airport.FUE]: [28.452717, -13.863761],
+    [Airport.TFN]: [28.48417803442812, -16.343086783604285],
+    [Airport.TFS]: [28.046500116877535, -16.572706413129964],
+    [Airport.LPA]: [27.929358992871467, -15.387152452894108],
+    [Airport.ACE]: [28.951544001195842, -13.606755084401644],
+    [Airport.FUE]: [28.447717772134673, -13.866626767517285],
 };
 
 const HARD_ZONE_POLYGONS: Coordinates[][] = [
