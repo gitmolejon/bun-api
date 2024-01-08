@@ -1502,16 +1502,22 @@ export async function calculateEstimatePrice(
         extraLuggage = 0,
     } = parameters;
 
+    let priceWith20: number = 0;
+    const metadata: { [key: string]: any } = {};
+
+    // Conditions check
     if (serviceType == ServiceType.A_DISPOSICION && !arrivalDateTime) {
         console.error("There is no arrivalDateTime and the service is 'A Disposicion'")
         return{price: -1, metadata: {}};
     }
 
-    let priceWith20: number = 0;
+    
+    const island = calculateIslandFromCoordinates(originCoordinates, ISLAND_ZONE_POLYGONS);
+    if (!island) {
+        console.error("The coordinates are not in any available island")
+        return{price: -1, metadata: {}};
+    }
 
-    const metadata: { [key: string]: any } = {};
-
-    const island: Island = calculateIslandFromCoordinates(originCoordinates, ISLAND_ZONE_POLYGONS);
     const zoneLevel: ZoneLevel = calculateZoneLevel(originCoordinates, destinationCoordinates, HARD_ZONE_POLYGONS, VERY_HARD_ZONE_POLYGONS);
     const dayTime: DayTime = calculateDayTime(departureDateTime);
     const isLuxury: boolean = calculateIsLuxury(vehicleType);

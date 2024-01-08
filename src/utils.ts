@@ -845,14 +845,14 @@ export function calculatePriceLuggage(pax: number, isLuxury: boolean, otherLugga
     return price;
 }
 
-export function calculateIslandFromCoordinates(coordinates: Coordinates, ISLANDS_POLYGONS: { [key in Island]: Coordinates[] }): Island {
+export function calculateIslandFromCoordinates(coordinates: Coordinates, ISLANDS_POLYGONS: { [key in Island]: Coordinates[] }): Island | undefined {
     for (const [island, polygons] of Object.entries(ISLANDS_POLYGONS)) {
         if (isPointInPolygon(coordinates, polygons)) {
             return island as Island;
         }
     }
     console.error("Error on calculateIslandFromCoordinates()");
-    return Island.GC;
+    return undefined;
 }
 
 async function getRouteInfoCached(route: Coordinates[], db: Database): Promise<{ kilometers: number, hours: number }> {
