@@ -2104,7 +2104,11 @@ export async function calculateEstimatePrice(
                 console.log(`🏨 Is Shuttle point`)
 
                 const AIRPORT_PRICES = await getAirportsPricesForShuttle();
+                console.log(`🔥🔥🔥🔥🔥🔥 NEAREST AIRPORT IS ${nearestAirport}`)
+                console.log(`🔥🔥🔥🔥🔥🔥 isShuttlePoint ${isShuttlePoint}`)
                 const shuttlePaxPrice = AIRPORT_PRICES[nearestAirport][isShuttlePoint] || 0;
+                console.log(`🔥🔥🔥🔥🔥🔥 shuttlePaxPrice ${shuttlePaxPrice}`)
+
                 if (shuttlePaxPrice.price) {
                     priceWith20 = shuttlePaxPrice.price * pax;
                 }
