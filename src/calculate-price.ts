@@ -2093,11 +2093,12 @@ export async function calculateEstimatePrice(
         if (IS_ORIGIN_AIRPORT || IS_DESTINATION_AIRPORT) {
             metadata['serviceType'] = 'Shuttle';
 
-            console.log(`🛫 Is SHUTTLE and ${IS_ORIGIN_AIRPORT ? 'origin' : 'destination'} is airport ${IS_ORIGIN_AIRPORT ? IS_ORIGIN_AIRPORT : IS_DESTINATION_AIRPORT}`)
+            const shuttleAirport = IS_ORIGIN_AIRPORT ? IS_ORIGIN_AIRPORT : IS_DESTINATION_AIRPORT;
+            console.log(`🛫 Is SHUTTLE and ${IS_ORIGIN_AIRPORT ? 'origin' : 'destination'} is airport ${shuttleAirport}`)
 
             const ISLAND_PLACES = await getIslandsPlacesForShuttle();
             const isShuttlePoint = isPlaceSuitableForShuttle(IS_ORIGIN_AIRPORT ? destinationCoordinates : originCoordinates, ISLAND_PLACES[island]);
-            if (isShuttlePoint) {
+            if (isShuttlePoint && shuttleAirport) {
 
                 metadata['isShuttlePoint'] = isShuttlePoint;
 
@@ -2106,7 +2107,7 @@ export async function calculateEstimatePrice(
                 const AIRPORT_PRICES = await getAirportsPricesForShuttle();
                 console.log(`🔥🔥🔥🔥🔥🔥 NEAREST AIRPORT IS ${nearestAirport}`)
                 console.log(`🔥🔥🔥🔥🔥🔥 isShuttlePoint ${isShuttlePoint}`)
-                const shuttlePaxPrice = AIRPORT_PRICES[nearestAirport][isShuttlePoint] || 0;
+                const shuttlePaxPrice = AIRPORT_PRICES[shuttleAirport][isShuttlePoint] || 0;
                 console.log(`🔥🔥🔥🔥🔥🔥 shuttlePaxPrice ${shuttlePaxPrice}`)
 
                 if (shuttlePaxPrice.price) {
