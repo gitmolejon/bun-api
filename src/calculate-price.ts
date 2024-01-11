@@ -2125,7 +2125,7 @@ export async function calculateEstimatePrice(
 
     // TODO: Check when apply rate to extra luggage on shuttle or not.
     if (serviceType == ServiceType.SHUTTLE) {
-        console.log('AQUI FALTA DEFINIR!');
+        luggagePrice = calculatePriceLuggage(luggagePackages);
     } else if (SPECIAL_PRICE_FTV_IS_ACTIVE && pax >= 9 && pax <= 30 && !isLuxury && !isAdapted) {
         if (luggagePackages > 0) {
             luggageManipulationPrice = calculatePriceLuggageManipulation(pax, isLuxury, luggagePackages, originCoordinates, destinationCoordinates, LUGGAGE_ZONE_POLYGONS)
@@ -2152,7 +2152,7 @@ export async function calculateEstimatePrice(
     let taxesRate = calculateTaxes(pax, isLuxury);
     metadata['taxes'] = taxesRate;
     
-    let priceWithTaxes = (priceWithRate + luggagePrice + luggageManipulationPrice) * (1 + taxesRate);
+    let priceWithTaxes = luggagePrice + luggageManipulationPrice + (priceWithRate * (1 + taxesRate));
     metadata['priceWithTaxes'] = priceWithTaxes;
 
 

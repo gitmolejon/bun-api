@@ -91,8 +91,17 @@ const app = new Elysia()
             originCoordinates,
             destinationCoordinates
           }, db);
+
+          const resultBackRoundTrip = await calculateEstimatePrice({
+            ...item,
+            departureDateTime: arrivalDateTime,
+            arrivalDateTime: undefined,
+            destinationCoordinates,
+            originCoordinates
+          }, db);
   
-          result.price += resultRoundTrip.price;
+          result.price += resultRoundTrip.price + resultBackRoundTrip.price;
+          
         } else {
           quotes.push({ price: 0, uid: item.uid, metadata: {}, status: "Round trip error because there is no arrivalDateTime or serviceType is not PRIVADO" });
           console.error("Round trip error because there is no arrivalDateTime or serviceType is not PRIVADO")

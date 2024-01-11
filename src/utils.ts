@@ -1422,9 +1422,9 @@ export async function getAirportsPricesForShuttle(): Promise<{ [key in Airport]:
         [Airport.GMZ]: {},
     };
 
-    data.forEach((item: { island: string; airport_id: number; zone_id: number; airport: string; zone_name: string; price: string | null }) => {
+    data.forEach((item: { island: string; airport_id: number; zone_id: number; airport: string; zone_name: string; price: number | null }) => {
         try {
-            let price = item.price !== null ? parseFloat(item.price.replace(',', '.')) : 0;
+            let price = item.price !== null ? item.price : 0;
             transformedData[item.airport as Airport][item.zone_id] = {
                 price: price,
                 zone_name: item.zone_name
