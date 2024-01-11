@@ -2105,10 +2105,7 @@ export async function calculateEstimatePrice(
                 console.log(`🏨 Is Shuttle point`)
 
                 const AIRPORT_PRICES = await getAirportsPricesForShuttle();
-                console.log(`🔥🔥🔥🔥🔥🔥 NEAREST AIRPORT IS ${nearestAirport}`)
-                console.log(`🔥🔥🔥🔥🔥🔥 isShuttlePoint ${isShuttlePoint}`)
                 const shuttlePaxPrice = AIRPORT_PRICES[shuttleAirport][isShuttlePoint] || 0;
-                console.log(`🔥🔥🔥🔥🔥🔥 shuttlePaxPrice ${shuttlePaxPrice}`)
 
                 if (shuttlePaxPrice.price) {
                     priceWith20 = shuttlePaxPrice.price * pax;
@@ -2157,7 +2154,7 @@ export async function calculateEstimatePrice(
     let taxesRate = calculateTaxes(pax, isLuxury);
     metadata['taxes'] = taxesRate;
     
-    let priceWithTaxes = luggagePrice + luggageManipulationPrice + (priceWithRate * (1 + taxesRate));
+    let priceWithTaxes = (luggageManipulationPrice + priceWithRate + luggagePrice) * (1 + taxesRate);
     metadata['priceWithTaxes'] = priceWithTaxes;
 
 
