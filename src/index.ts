@@ -1,3 +1,5 @@
+// TODO: Mejorar la respuesta de status con los errores...
+
 import { Elysia, t } from "elysia";
 import { swagger } from '@elysiajs/swagger'
 import { Database } from "bun:sqlite";
@@ -5,7 +7,7 @@ import { migrate } from './migration'
 import { getMigrations } from './migrator'
 
 import { calculateEstimatePrice } from './calculate-price'
-import { ServiceType, VehicleType } from "./types";
+import { ServiceType, bodyArrayObject, bodyObject } from "./types";
 
 const API_KEY = process.env.API_KEY || false;
 
@@ -27,28 +29,86 @@ const app = new Elysia()
     const arrivalDateTime = body.arrivalDateTime ? new Date(body.arrivalDateTime) : undefined;
     const originCoordinates = body.originCoordinates as [number, number];
     const destinationCoordinates = body.destinationCoordinates as [number, number];
-    const result = await calculateEstimatePrice({ ...body, departureDateTime, arrivalDateTime, originCoordinates, destinationCoordinates }, db);
+
+    const result = await calculateEstimatePrice({
+      ...body,
+      departureDateTime,
+      arrivalDateTime,
+      originCoordinates,
+      destinationCoordinates
+    }, db);
+
+    if (body.roundTrip) {
+      if (arrivalDateTime && ['PRIVADO'].includes(body.serviceType)) {
+        const resultRoundTrip = await calculateEstimatePrice({
+          ...body,
+          departureDateTime: arrivalDateTime,
+          arrivalDateTime: undefined,
+          originCoordinates,
+          destinationCoordinates
+        }, db);
+
+        result.price += resultRoundTrip.price;
+      } else {
+        console.error("Round trip error because there is no arrivalDateTime or serviceType is not PRIVADO")
+        return { price: 0, metadata: { ...result.metadata, roundTrip: body.roundTrip }, status: "Round trip error because there is no arrivalDateTime or serviceType is not PRIVADO" };
+      }
+    } 
+
     if (result.price > 0)
-      return { price: result.price, metadata: result.metadata };
+      return { price: result.price, metadata: { ...result.metadata, roundTrip: body.roundTrip } };
     else
-      return { error: "No se ha podido calcular el precio" };
+      return { price: 0, metadata: {}, status: "ERROR" };
   }, {
-    body: t.Object({
-      serviceType: t.Enum(ServiceType),
-      departureDateTime: t.String(),
-      arrivalDateTime: t.Optional(t.String()),
-      pax: t.Integer(),
-      originCoordinates: t.Array(t.Number(), { minItems: 2, maxItems: 2 }),
-      destinationCoordinates: t.Array(t.Number(), { minItems: 2, maxItems: 2 }),
-      rate: t.Optional(t.Number()),
-      vehicleType: t.Optional(t.Enum(VehicleType)),
-      kidStroller: t.Optional(t.Integer()),
-      surfBoard: t.Optional(t.Integer()),
-      golfBag: t.Optional(t.Integer()),
-      bike: t.Optional(t.Integer()),
-      specialLuggage: t.Optional(t.Integer()),
-      extraLuggage: t.Optional(t.Integer())
-    })
+    body: bodyObject
+  })
+  .post('/quotes', async ({ body, headers }) => {
+    if (API_KEY && headers['authorization'] !== `Bearer ${API_KEY}`) {
+      return { error: "Unauthorized" };
+    }
+    
+    console.log("Body: ", body);
+    const quotes = [];
+
+    for (const item of body) {
+      const departureDateTime = new Date(item.departureDateTime);
+      const arrivalDateTime = item.arrivalDateTime ? new Date(item.arrivalDateTime) : undefined;
+      const originCoordinates = item.originCoordinates as [number, number];
+      const destinationCoordinates = item.destinationCoordinates as [number, number];
+      const result = await calculateEstimatePrice({ ...item, departureDateTime, arrivalDateTime, originCoordinates, destinationCoordinates }, db);
+
+      console.log('🐛 [BORRAR] ->', 'El resultado obtenido es ', result)
+
+      console.log("Round trip: ", item.roundTrip)
+      if (item.roundTrip) {
+        if (item.serviceType == ServiceType.SHUTTLE) {
+          result.price *= 2;
+        } else if (arrivalDateTime && [ServiceType.PRIVADO].includes(item.serviceType)) {
+          const resultRoundTrip = await calculateEstimatePrice({
+            ...item,
+            departureDateTime: arrivalDateTime,
+            arrivalDateTime: undefined,
+            originCoordinates,
+            destinationCoordinates
+          }, db);
+  
+          result.price += resultRoundTrip.price;
+        } else {
+          quotes.push({ price: 0, uid: item.uid, metadata: {}, status: "Round trip error because there is no arrivalDateTime or serviceType is not PRIVADO" });
+          console.error("Round trip error because there is no arrivalDateTime or serviceType is not PRIVADO")
+          continue;
+        }
+      } 
+
+      if (result.price > 0) {
+        quotes.push({ price: result.price, uid: item.uid, metadata: result.metadata, status: "OK" });
+      } else {
+        quotes.push({ price: 0, uid: item.uid, metadata: {}, status: "ERROR" });
+      }
+    }
+    return quotes;
+  }, {
+    body: bodyArrayObject
   })
   .listen(3000);
 

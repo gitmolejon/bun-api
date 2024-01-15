@@ -26,20 +26,34 @@ import {
     isPointInPolygon,
     calculateIslandFromCoordinates,
     isPointInAnyPolygon,
+    isAirportCloseToCoordinates,
+    isPlaceSuitableForShuttle,
+    getIslandsPlacesForShuttle,
+    getAirportsPricesForShuttle,
 } from './utils';
 
 
 const MAX_MICROBUS_PAX_CAPACITY_AT_LA_PALMA: number = 15;
 
 const AIRPORT_COORDINATES: { [key in Airport]: Coordinates } = {
+    // FIRST AIRPORTS:
+    // [Airport.VDE]: [27.814847, -17.887056],
+    // [Airport.SPC]: [28.626478, -17.755611],
+    // [Airport.GMZ]: [28.029722, -17.214167],
+    // [Airport.TFN]: [28.4845157,-16.3459953],
+    // [Airport.TFS]: [28.044475, -16.572488],
+    // [Airport.LPA]: [27.931886, -15.386586],
+    // [Airport.ACE]: [28.945464, -13.605225],
+    // [Airport.FUE]: [28.452717, -13.863761],
+    // UPDATED AIRPORTS:
     [Airport.VDE]: [27.814847, -17.887056],
-    [Airport.SPC]: [28.626478, -17.755611],
+    [Airport.SPC]: [28.62564952005458, -17.75511236939051],
     [Airport.GMZ]: [28.029722, -17.214167],
-    [Airport.TNF]: [28.044475, -16.572488],
-    [Airport.TNS]: [28.044475, -16.572488],
-    [Airport.LPA]: [27.931886, -15.386586],
-    [Airport.ACE]: [28.945464, -13.605225],
-    [Airport.FUE]: [28.452717, -13.863761],
+    [Airport.TFN]: [28.48417803442812, -16.343086783604285],
+    [Airport.TFS]: [28.046500116877535, -16.572706413129964],
+    [Airport.LPA]: [27.929358992871467, -15.387152452894108],
+    [Airport.ACE]: [28.951544001195842, -13.606755084401644],
+    [Airport.FUE]: [28.447717772134673, -13.866626767517285],
 };
 
 const HARD_ZONE_POLYGONS: Coordinates[][] = [
@@ -1488,16 +1502,22 @@ export async function calculateEstimatePrice(
         extraLuggage = 0,
     } = parameters;
 
+    let priceWith20: number = 0;
+    const metadata: { [key: string]: any } = {};
+
+    // Conditions check
     if (serviceType == ServiceType.A_DISPOSICION && !arrivalDateTime) {
         console.error("There is no arrivalDateTime and the service is 'A Disposicion'")
         return{price: -1, metadata: {}};
     }
 
-    let priceWith20: number = 0;
+    
+    const island = calculateIslandFromCoordinates(originCoordinates, ISLAND_ZONE_POLYGONS);
+    if (!island) {
+        console.error("The coordinates are not in any available island")
+        return{price: -1, metadata: {}};
+    }
 
-    const metadata: { [key: string]: any } = {};
-
-    const island: Island = calculateIslandFromCoordinates(originCoordinates, ISLAND_ZONE_POLYGONS);
     const zoneLevel: ZoneLevel = calculateZoneLevel(originCoordinates, destinationCoordinates, HARD_ZONE_POLYGONS, VERY_HARD_ZONE_POLYGONS);
     const dayTime: DayTime = calculateDayTime(departureDateTime);
     const isLuxury: boolean = calculateIsLuxury(vehicleType);
@@ -1572,17 +1592,46 @@ export async function calculateEstimatePrice(
             zoneLevel,
             MAX_MICROBUS_PAX_CAPACITY_AT_LA_PALMA
         )
+    } else if (serviceType == ServiceType.SHUTTLE) {
+        const AIRPORT_TRESHOLD = 500;
+
+        const IS_ORIGIN_AIRPORT = isAirportCloseToCoordinates(originCoordinates, AIRPORT_COORDINATES, AIRPORT_TRESHOLD);
+        const IS_DESTINATION_AIRPORT = isAirportCloseToCoordinates(destinationCoordinates, AIRPORT_COORDINATES, AIRPORT_TRESHOLD);
+        
+        if (IS_ORIGIN_AIRPORT || IS_DESTINATION_AIRPORT) {
+            metadata['serviceType'] = 'Shuttle';
+
+            console.log(`🛫 Is SHUTTLE and ${IS_ORIGIN_AIRPORT ? 'origin' : 'destination'} is airport ${IS_ORIGIN_AIRPORT ? IS_ORIGIN_AIRPORT : IS_DESTINATION_AIRPORT}`)
+
+            const ISLAND_PLACES = await getIslandsPlacesForShuttle();
+            const isShuttlePoint = isPlaceSuitableForShuttle(IS_ORIGIN_AIRPORT ? destinationCoordinates : originCoordinates, ISLAND_PLACES[island]);
+            if (isShuttlePoint) {
+
+                metadata['isShuttlePoint'] = isShuttlePoint;
+
+                console.log(`🏨 Is Shuttle point`)
+
+                const AIRPORT_PRICES = await getAirportsPricesForShuttle();
+                const shuttlePaxPrice = AIRPORT_PRICES[nearestAirport][isShuttlePoint];
+                if (shuttlePaxPrice.price) {
+                    priceWith20 = shuttlePaxPrice.price * pax;
+                }
+            }
+        }
+        console.log('Is not shuttle...')
     }
 
-    let priceWithRate = (priceWith20 / 1.2) * rate;
-    let extraLuggagePrice = calculatePriceLuggage(
+    // TODO: Modify this to calculate the price of luggage with shuttle on the function calculatePriceLuggage
+    let priceWithRate = serviceType != ServiceType.SHUTTLE ? (priceWith20 / 1.2) * rate : priceWith20;
+    // TODO: Modify this to calculate the price of luggage with shuttle on the function calculatePriceLuggage
+    let extraLuggagePrice = serviceType != ServiceType.SHUTTLE ? calculatePriceLuggage(
         pax,
         isLuxury,
         (kidStroller + surfBoard + golfBag + bike + specialLuggage),
         extraLuggage,
         originCoordinates,
         destinationCoordinates,
-        LUGGAGE_ZONE_POLYGONS);
+        LUGGAGE_ZONE_POLYGONS) : 0;
 
     console.log(`💰 Price with rate is ${priceWithRate} and extra luggage price is ${extraLuggage}`)
 
