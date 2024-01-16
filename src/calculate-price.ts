@@ -39,7 +39,7 @@ import {
 
 const MAX_MICROBUS_PAX_CAPACITY_AT_LA_PALMA: number = 15;
 
-const AIRPORT_COORDINATES: { [key in Airport]: Coordinates } = {
+export const AIRPORT_COORDINATES: { [key in Airport]: Coordinates } = {
     // FIRST AIRPORTS:
     // [Airport.VDE]: [27.814847, -17.887056],
     // [Airport.SPC]: [28.626478, -17.755611],

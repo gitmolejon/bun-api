@@ -12,6 +12,7 @@ import {
 import getRouteInfo from "./google-maps-api";
 import Database from "bun:sqlite";
 import { RAW_PLACES, RAW_PRICES } from "./db_data";
+import { AIRPORT_COORDINATES } from "./calculate-price";
 
 function reversePointsOrder(points: Coordinates[]) {
     return points.map(point => [point[1], point[0]]);
@@ -467,8 +468,45 @@ export function calculateZoneLevel(origin: Coordinates, destination: Coordinates
     return ZoneLevel.NORMAL;
 }
 
+function _getRouteClean(route: Coordinates[], AIRPORTS_COORDINATES: { [key in Airport]: Coordinates }): Coordinates[] {
+    
+    const THRESHOLD = 500;
+    const AIRPORT_COORDINATES_CLEAN: { [key in Airport]: Coordinates} = {
+        [Airport.VDE]: [27.814173695986952, -17.88494327246743],
+        [Airport.SPC]: [28.621027041067542, -17.75212715151506],
+        [Airport.GMZ]: [28.03175072854512, -17.210425271536845],
+        [Airport.TFN]: [28.48874500830741, -16.34702896474256],
+        [Airport.TFS]: [28.047899093057506, -16.580980431230326],
+        [Airport.LPA]: [27.937648076410973, -15.391287409595945],
+        [Airport.ACE]: [28.952105225418716, -13.60742572971122],
+        [Airport.FUE]: [28.455070950122455, -13.870963283731854],
+    }
+
+    return route.map((point, index) => {
+        if (calculateDistanceBetweenCoordinates(point, AIRPORTS_COORDINATES[Airport.LPA]) < THRESHOLD) {
+            return AIRPORT_COORDINATES_CLEAN[Airport.LPA];
+        } else if (calculateDistanceBetweenCoordinates(point, AIRPORTS_COORDINATES[Airport.TFN]) < THRESHOLD) {
+            return AIRPORT_COORDINATES_CLEAN[Airport.TFN];
+        } else if (calculateDistanceBetweenCoordinates(point, AIRPORTS_COORDINATES[Airport.TFS]) < THRESHOLD) {
+            return AIRPORT_COORDINATES_CLEAN[Airport.TFS];
+        } else if (calculateDistanceBetweenCoordinates(point, AIRPORTS_COORDINATES[Airport.ACE]) < THRESHOLD) {
+            return AIRPORT_COORDINATES_CLEAN[Airport.ACE];
+        } else if (calculateDistanceBetweenCoordinates(point, AIRPORTS_COORDINATES[Airport.FUE]) < THRESHOLD) {
+            return AIRPORT_COORDINATES_CLEAN[Airport.FUE];
+        } else if (calculateDistanceBetweenCoordinates(point, AIRPORTS_COORDINATES[Airport.GMZ]) < THRESHOLD) {
+            return AIRPORT_COORDINATES_CLEAN[Airport.GMZ];
+        } else if (calculateDistanceBetweenCoordinates(point, AIRPORTS_COORDINATES[Airport.SPC]) < THRESHOLD) {
+            return AIRPORT_COORDINATES_CLEAN[Airport.SPC];
+        } else if (calculateDistanceBetweenCoordinates(point, AIRPORTS_COORDINATES[Airport.VDE]) < THRESHOLD) {
+            return AIRPORT_COORDINATES_CLEAN[Airport.VDE];
+        }
+        return point;
+    });
+}
+
 export async function calculateKilometersBetweenPoints(route: Coordinates[], db: Database): Promise<{ kilometers: number, hours: number }> {
-    const result = await getRouteInfoCached(route, db);
+    const routeClean = _getRouteClean(route, AIRPORT_COORDINATES);
+    const result = await getRouteInfoCached(routeClean, db);
     return result
 }
 
