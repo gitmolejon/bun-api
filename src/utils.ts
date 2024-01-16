@@ -482,12 +482,15 @@ function _getRouteClean(route: Coordinates[], AIRPORTS_COORDINATES: { [key in Ai
         [Airport.FUE]: [28.455070950122455, -13.870963283731854],
     }
 
-    return route.map((point, index) => {
+    console.log('🔥🔥🔥', route)
+
+    const newRoute = route.map((point, index) => {
         if (calculateDistanceBetweenCoordinates(point, AIRPORTS_COORDINATES[Airport.LPA]) < THRESHOLD) {
             return AIRPORT_COORDINATES_CLEAN[Airport.LPA];
         } else if (calculateDistanceBetweenCoordinates(point, AIRPORTS_COORDINATES[Airport.TFN]) < THRESHOLD) {
             return AIRPORT_COORDINATES_CLEAN[Airport.TFN];
         } else if (calculateDistanceBetweenCoordinates(point, AIRPORTS_COORDINATES[Airport.TFS]) < THRESHOLD) {
+            console.log('🔥🔥🔥 Entro en TFS 🔥🔥🔥')
             return AIRPORT_COORDINATES_CLEAN[Airport.TFS];
         } else if (calculateDistanceBetweenCoordinates(point, AIRPORTS_COORDINATES[Airport.ACE]) < THRESHOLD) {
             return AIRPORT_COORDINATES_CLEAN[Airport.ACE];
@@ -502,6 +505,8 @@ function _getRouteClean(route: Coordinates[], AIRPORTS_COORDINATES: { [key in Ai
         }
         return point;
     });
+    console.log('🔥🔥🔥', newRoute)
+    return newRoute;
 }
 
 export async function calculateKilometersBetweenPoints(route: Coordinates[], db: Database): Promise<{ kilometers: number, hours: number }> {
