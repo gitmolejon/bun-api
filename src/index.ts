@@ -10,6 +10,7 @@ import { calculateEstimatePrice } from './calculate-price'
 import { ServiceType, bodyArrayObject, bodyObject } from "./types";
 
 const API_KEY = process.env.API_KEY || false;
+const DELETE_TOKEN = process.env.DELETE_TOKEN || false;
 
 const db = new Database(`db/data.sqlite`, { create: true })
 migrate(db, getMigrations('./migrations'))
@@ -18,6 +19,21 @@ const app = new Elysia()
   .use(swagger())
   .get('/', () => {
     return "Go to /swagger to see the API documentation"
+  })
+  .get('/health', () => {
+    return "OK"
+  })
+  .post('/delete', async ({headers}) => {
+    if (!DELETE_TOKEN) {
+      return { error: "Not secured" };
+    }
+    if (headers['authorization'] !== `Bearer ${DELETE_TOKEN}`) {
+      return { error: "Unauthorized" };
+    }
+
+    await db.query(`DELETE FROM routes;`).get();
+    await db.query(`DELETE FROM sqlite_sequence WHERE name='routes';`).get();
+    return "Database cache deleted"
   })
   .post('/quote', async ({ body, headers }) => {
     if (API_KEY && headers['authorization'] !== `Bearer ${API_KEY}`) {

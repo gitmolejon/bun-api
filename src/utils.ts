@@ -14,6 +14,53 @@ import Database from "bun:sqlite";
 import { RAW_PLACES, RAW_PRICES } from "./db_data";
 import { AIRPORT_COORDINATES } from "./calculate-price";
 
+const TFS_AIRPORT_POLYGON: Coordinates[] = [
+      [
+        -16.918990621321342,
+        28.326479259437505
+      ],
+      [
+        -16.70664066075534,
+        27.976971926935406
+      ],
+      [
+        -16.494748741827976,
+        28.00394162007906
+      ],
+      [
+        -16.398131914173774,
+        28.198001802264343
+      ],
+      [
+        -16.52366746897573,
+        28.231240292530643
+      ],
+      [
+        -16.561278711132644,
+        28.278289121702272
+      ],
+      [
+        -16.673923761895793,
+        28.328422703639745
+      ],
+      [
+        -16.78334075066408,
+        28.331783517646414
+      ],
+      [
+        -16.831074737798104,
+        28.334658281678713
+      ],
+      [
+        -16.876966340236123,
+        28.32404340252876
+      ],
+      [
+        -16.918990621321342,
+        28.326479259437505
+      ]
+];
+
 function reversePointsOrder(points: Coordinates[]) {
     return points.map(point => [point[1], point[0]]);
 }
@@ -27,6 +74,7 @@ function calculateExtraPriceGreatherThan9(
     CONSTANT: number,
     MAX_MICROBUS_PAX_CAPACITY_AT_LA_PALMA: number = 15,
     SPECIAL_PRICE_FTV_IS_ACTIVE: boolean = true, // Cuidado!! Esta variable se comporta como constante!!!
+    isReducedPrice: boolean = false,
 ): number {
     if (island == Island.GC || island == Island.TNF || island == Island.LNZ) {
         if (pax >= 9 && pax <= 18) {
@@ -42,8 +90,10 @@ function calculateExtraPriceGreatherThan9(
         if (pax >= 9 && pax <= MAX_MICROBUS_PAX_CAPACITY_AT_LA_PALMA) {
             return basePrice;
         } else if (pax > MAX_MICROBUS_PAX_CAPACITY_AT_LA_PALMA && pax <= 30) {
-            if (kilometersHours < 12) {
+            if (isReducedPrice) {
                 return basePrice + 38.4;
+            } else if (kilometersHours < 30) {
+                return basePrice + 48;
             } else if (kilometersHours < 160) {
                 return basePrice + 38.4;
             } else if (kilometersHours < 240) {
@@ -54,8 +104,10 @@ function calculateExtraPriceGreatherThan9(
                 return basePrice + 60;
             }
         } else if (pax >= 31 && pax <= 55) {
-            if (kilometersHours < 12) {
+            if (isReducedPrice) {
                 return basePrice + 86.4;
+            } else if (kilometersHours < 30) {
+                return basePrice + 96;
             } else if (kilometersHours < 160) {
                 return basePrice + 134.4;
             } else if (kilometersHours < 240) {
@@ -118,16 +170,12 @@ function calculateSpecialExtraPriceGreaterThan9(
         } else if (pax >= 19 && pax <= 30 && !SPECIAL_PRICE_FTV_IS_ACTIVE) {
             if (kilometersHours < 480) {
                 return basePrice + 48;
-            } else if (kilometersHours < 550) {
-                return basePrice + 60;
             } else {
                 return basePrice + 96;
             }
         } else if (pax >= 31 && pax <= 55) {
             if (kilometersHours < 480) {
                 return basePrice + 96;
-            } else if (kilometersHours < 550) {
-                return basePrice + 144;
             } else {
                 return basePrice + 192;
             }
@@ -164,6 +212,7 @@ function calculateExtraPrice1to8(
     isLuxury: boolean,
     isAdapted: boolean,
     island: Island,
+    isReducedPrice: boolean = false,
 ): number {
     
     if (island == Island.GC) {
@@ -418,8 +467,10 @@ function calculateExtraPrice1to8(
         } else if (pax <= 3) {
             return basePrice;
         } else if (pax <= 8) {
-            if (kilometersHours < 12) {
+            if (isReducedPrice) {
                 return basePrice + 4.8;
+            } else if (kilometersHours < 30) {
+                return basePrice + 15.6;
             } else if (kilometersHours < 160) {
                 return basePrice + 10.8;
             } else if (kilometersHours < 240) {
@@ -472,17 +523,15 @@ function _getRouteClean(route: Coordinates[], AIRPORTS_COORDINATES: { [key in Ai
     
     const THRESHOLD = 500;
     const AIRPORT_COORDINATES_CLEAN: { [key in Airport]: Coordinates} = {
-        [Airport.VDE]: [27.814173695986952, -17.88494327246743],
-        [Airport.SPC]: [28.621027041067542, -17.75212715151506],
-        [Airport.GMZ]: [28.03175072854512, -17.210425271536845],
-        [Airport.TFN]: [28.48874500830741, -16.34702896474256],
+        [Airport.VDE]: [27.81464068896817, -17.885178809445023],
+        [Airport.SPC]: [28.626441158953487, -17.75378635324323],
+        [Airport.GMZ]: [28.03177338852903, -17.212100799762826],
+        [Airport.TFN]: [28.48872315923113, -16.34885169686013],
         [Airport.TFS]: [28.047899093057506, -16.580980431230326],
-        [Airport.LPA]: [27.937648076410973, -15.391287409595945],
+        [Airport.LPA]: [27.9388959758168, -15.39048012794674],
         [Airport.ACE]: [28.952105225418716, -13.60742572971122],
         [Airport.FUE]: [28.455070950122455, -13.870963283731854],
     }
-
-    console.log('🔥🔥🔥', route)
 
     const newRoute = route.map((point, index) => {
         if (calculateDistanceBetweenCoordinates(point, AIRPORTS_COORDINATES[Airport.LPA]) < THRESHOLD) {
@@ -490,7 +539,6 @@ function _getRouteClean(route: Coordinates[], AIRPORTS_COORDINATES: { [key in Ai
         } else if (calculateDistanceBetweenCoordinates(point, AIRPORTS_COORDINATES[Airport.TFN]) < THRESHOLD) {
             return AIRPORT_COORDINATES_CLEAN[Airport.TFN];
         } else if (calculateDistanceBetweenCoordinates(point, AIRPORTS_COORDINATES[Airport.TFS]) < THRESHOLD) {
-            console.log('🔥🔥🔥 Entro en TFS 🔥🔥🔥')
             return AIRPORT_COORDINATES_CLEAN[Airport.TFS];
         } else if (calculateDistanceBetweenCoordinates(point, AIRPORTS_COORDINATES[Airport.ACE]) < THRESHOLD) {
             return AIRPORT_COORDINATES_CLEAN[Airport.ACE];
@@ -505,12 +553,12 @@ function _getRouteClean(route: Coordinates[], AIRPORTS_COORDINATES: { [key in Ai
         }
         return point;
     });
-    console.log('🔥🔥🔥', newRoute)
     return newRoute;
 }
 
 export async function calculateKilometersBetweenPoints(route: Coordinates[], db: Database): Promise<{ kilometers: number, hours: number }> {
     const routeClean = _getRouteClean(route, AIRPORT_COORDINATES);
+    console.log('🌏 Route clean: ', routeClean)
     const result = await getRouteInfoCached(routeClean, db);
     return result
 }
@@ -518,7 +566,6 @@ export async function calculateKilometersBetweenPoints(route: Coordinates[], db:
 export async function calculateNearestAirport(
     origin: Coordinates,
     island: Island,
-    airportCoordinates: { [key in Airport]: Coordinates },
     islandsRoundZonePolygons: Partial<{ [key in Island]: Partial<{ [key in CardinalPoint]: Coordinates[] }> }>,
     db: Database): Promise<Airport> {
 
@@ -534,18 +581,9 @@ export async function calculateNearestAirport(
         if (islandsRoundZonePolygons.TNF?.NORTH && isPointInPolygon(origin, islandsRoundZonePolygons.TNF.NORTH)) {
             return Airport.TFN;
         }
-        try {
-            const [tfnResult, tfsResult] = await Promise.all([
-                getRouteInfoCached([origin, airportCoordinates.TFN], db),
-                getRouteInfoCached([origin, airportCoordinates.TFS], db)
-            ]);
-            if (tfnResult.hours < tfsResult.hours) { // TODO: Check if use hours or km
-                return Airport.TFN;
-            } else {
-                return Airport.TFS;
-            }
-        } catch (e) {
-            console.error("Error on calculateNearestAirport -> ", e);
+        if (isPointInPolygon(origin, TFS_AIRPORT_POLYGON)) {
+            return Airport.TFS;
+        } else {
             return Airport.TFN;
         }
     }
@@ -626,7 +664,9 @@ export function calculateCustomRoute(
                 route.push(airportCoordinates.TFS);
             } else {
                 route.push(destination);
-                route.push(airportCoordinates[nearestAirport]);
+                if (!isAirportCloseToCoordinates(destination, airportCoordinates, 500)) {
+                    route.push(airportCoordinates[nearestAirport]);
+                }
             }
         } else if (island == Island.FTV) {
             route.push(airportCoordinates.FUE);
@@ -708,7 +748,6 @@ export function calculateIsAdapted(vehicleType: VehicleType | undefined): boolea
 export async function calculateReducedKMH(
     origin: Coordinates,
     destination: Coordinates,
-    island: Island,
     isShuttleZone: boolean,
     db: Database
 ): Promise<{ isReduced: boolean, kilometers: number, hours: number }> {
@@ -717,42 +756,12 @@ export async function calculateReducedKMH(
         const { kilometers, hours } = await calculateKilometersBetweenPoints([origin, destination], db)
         const kilometersHours = kilometers * hours;
 
-        if (island == Island.GC && kilometersHours <= 5) {
+        if (kilometersHours <= 3) {
             return {
                 isReduced: true,
                 kilometers: kilometers,
                 hours: hours
             }
-        } else if (island == Island.TNF && kilometersHours <= 8) {
-            return {
-                isReduced: true,
-                kilometers: kilometers,
-                hours: hours
-            }
-        } else if (island == Island.FTV && kilometersHours <= 7) {
-            return {
-                isReduced: true,
-                kilometers: kilometers,
-                hours: hours
-            }
-        } else if (island == Island.LNZ && kilometersHours <= 4) {
-            return {
-                isReduced: true,
-                kilometers: kilometers,
-                hours: hours
-            }
-        } else if (island == Island.LP && kilometersHours <= 10) {
-            return {
-                isReduced: true,
-                kilometers: kilometers,
-                hours: hours
-            }
-        }
-
-        return {
-            isReduced: false,
-            kilometers: 0,
-            hours: 0
         }
     }
 
@@ -1047,8 +1056,8 @@ export function calculatePriceKMH(
                 basePrice = 132
             } else if (isSpecial) {
                 basePrice = calculatePricesWithTresholds(kilometersHours, [
-                    [50, 132],
-                    [150, 144],
+                    [80, 132],
+                    [120, 144],
                     [225, 156],
                     [300, 168],
                     [355, 180],
@@ -1057,11 +1066,11 @@ export function calculatePriceKMH(
                     [650, 324],
                     [Infinity, 324]
                 ])
-                calculateSpecialExtraPriceGreaterThan9(pax, kilometersHours, basePrice, Island.GC,  355);
+                return calculateSpecialExtraPriceGreaterThan9(pax, kilometersHours, basePrice, Island.GC,  355);
             } else {
                 basePrice = calculatePricesWithTresholds(kilometersHours, [
-                    [50, 132],
-                    [150, 144],
+                    [80, 132],
+                    [120, 144],
                     [225, 156],
                     [300, 168],
                     [355, 180],
@@ -1073,31 +1082,27 @@ export function calculatePriceKMH(
 
         } else if (nearestAiport == Airport.TFN || nearestAiport == Airport.TFS) {
 
-            if (isReducedPrice && kilometersHours <= 4) {
+            if (isReducedPrice) {
                 basePrice = 120;
-            } else if (isReducedPrice && kilometersHours <= 8) {
-                basePrice = 132
             } else if (isSpecial) {
                 basePrice = calculatePricesWithTresholds(kilometersHours, [
                     [30, 132],
                     [70, 144],
-                    [100, 156],
-                    [200, 168],
-                    [370, 180],
+                    [200, 156],
+                    [400, 180],
                     [500, 192],
                     [700, 204],
                     [1000, 276],
                     [1200, 300],
                     [Infinity, 312]
                 ]);
-                calculateSpecialExtraPriceGreaterThan9(pax, kilometersHours, basePrice, Island.TNF, 700);
+                return calculateSpecialExtraPriceGreaterThan9(pax, kilometersHours, basePrice, Island.TNF, 700);
             } else {
                 basePrice = calculatePricesWithTresholds(kilometersHours, [
                     [30, 132],
                     [70, 144],
-                    [100, 156],
-                    [200, 168],
-                    [370, 180],
+                    [200, 156],
+                    [400, 180],
                     [500, 192],
                     [700, 204],
                     [Infinity, 240]
@@ -1108,17 +1113,17 @@ export function calculatePriceKMH(
 
         } else if (nearestAiport == Airport.ACE) {
 
-            if (isReducedPrice && kilometersHours <= 4) {
+            if (isReducedPrice) {
                 basePrice = 120;
             } else if (isSpecial) {
                 basePrice = calculatePricesWithTresholds(kilometersHours, [
                     [30, 120],
                     [130, 156],
-                    [200, 276],
+                    [250, 276],
                     [350, 312],
                     [Infinity, 312]
                 ]);
-                calculateSpecialExtraPriceGreaterThan9(pax, kilometersHours, basePrice, Island.LNZ, 130);
+                return calculateSpecialExtraPriceGreaterThan9(pax, kilometersHours, basePrice, Island.LNZ, 130);
             } else {
                 basePrice = calculatePricesWithTresholds(kilometersHours, [
                     [30, 120],
@@ -1131,7 +1136,7 @@ export function calculatePriceKMH(
 
         } else if (nearestAiport == Airport.FUE) {
 
-            if (isReducedPrice && kilometersHours <= 7) {
+            if (isReducedPrice) {
                 basePrice = 120;
             } else if (isSpecial) {
                 basePrice = calculatePricesWithTresholds(kilometersHours, [
@@ -1140,12 +1145,11 @@ export function calculatePriceKMH(
                     [160, 156],
                     [300, 168],
                     [480, 180],
-                    [550, 240],
                     [650, 300],
                     [900, 312],
                     [Infinity, 312]
                 ]);
-                calculateSpecialExtraPriceGreaterThan9(pax, kilometersHours, basePrice, Island.FTV, 480);
+                return calculateSpecialExtraPriceGreaterThan9(pax, kilometersHours, basePrice, Island.FTV, 480);
             } else {
                 basePrice = calculatePricesWithTresholds(kilometersHours, [
                     [50, 120],
@@ -1174,7 +1178,7 @@ export function calculatePriceKMH(
                 ])
             }
 
-            return calculateExtraPriceGreatherThan9(pax, kilometersHours, basePrice, Island.LP, 380, MAX_MICROBUS_PAX_CAPACITY_AT_LA_PALMA);
+            return calculateExtraPriceGreatherThan9(pax, kilometersHours, basePrice, Island.LP, 380, MAX_MICROBUS_PAX_CAPACITY_AT_LA_PALMA, isReducedPrice);
 
         }
 
@@ -1185,8 +1189,8 @@ export function calculatePriceKMH(
                 basePrice = 48
             } else {
                 basePrice = calculatePricesWithTresholds(kilometersHours, [
-                    [50, 48],
-                    [150, 60],
+                    [80, 48],
+                    [120, 60],
                     [225, 72],
                     [300, 84],
                     [355, 96],
@@ -1200,17 +1204,15 @@ export function calculatePriceKMH(
             return calculateExtraPrice1to8(pax, kilometersHours, basePrice, isLuxury, isAdapted, Island.GC);
         } else if (nearestAiport == Airport.TFN || nearestAiport == Airport.TFS) {
 
-            if (isReducedPrice && kilometersHours <= 4) {
+            if (isReducedPrice) {
                 basePrice = 36;
-            } else if (isReducedPrice && kilometersHours <= 8) {
-                basePrice = 42
             } else {
                 basePrice = calculatePricesWithTresholds(kilometersHours, [
                     [30, 42],
                     [70, 54],
                     [100, 60],
                     [200, 84],
-                    [370, 120],
+                    [400, 120],
                     [500, 132],
                     [700, 144],
                     [1000, 156],
@@ -1222,13 +1224,13 @@ export function calculatePriceKMH(
             return calculateExtraPrice1to8(pax, kilometersHours, basePrice, isLuxury, isAdapted, Island.TNF);
         } else if (nearestAiport == Airport.ACE) {
 
-            if (isReducedPrice && kilometersHours <= 4) {
+            if (isReducedPrice) {
                 basePrice = 32.4;
             } else {
                 basePrice = calculatePricesWithTresholds(kilometersHours, [
                     [30, 36],
                     [130, 60],
-                    [200, 96],
+                    [250, 96],
                     [350, 120],
                     [Infinity, 240]
                 ]);
@@ -1237,7 +1239,7 @@ export function calculatePriceKMH(
             return calculateExtraPrice1to8(pax, kilometersHours, basePrice, isLuxury, isAdapted, Island.LNZ);
         } else if (nearestAiport == Airport.FUE) {
 
-            if (isReducedPrice && kilometersHours <= 7) {
+            if (isReducedPrice) {
                 basePrice = 32.4;
             } else {
                 basePrice = calculatePricesWithTresholds(kilometersHours, [
@@ -1246,7 +1248,6 @@ export function calculatePriceKMH(
                     [160, 72],
                     [300, 108],
                     [480, 120],
-                    [550, 150],
                     [650, 168],
                     [900, 180],
                     [Infinity, 240]
@@ -1480,8 +1481,14 @@ export async function getAirportsPricesForShuttle(): Promise<{ [key in Airport]:
     return transformedData;
 }
 
-export function calculateTaxes(pax: number, isLuxury: boolean): number {
-    if (pax < 9 && isLuxury) {
+export function calculateTaxes(pax: number, isLuxury: boolean, serviceType: ServiceType): number {
+    if (serviceType == ServiceType.A_DISPOSICION) {
+        return 0.07;
+    }
+    if (serviceType == ServiceType.SHUTTLE) {
+        return 0.03;
+    }
+    if (pax <= 8 || (pax <= 9 && isLuxury)) {
         return 0.07;
     }
     return 0.03
