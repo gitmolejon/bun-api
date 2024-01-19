@@ -2081,7 +2081,7 @@ export async function calculateEstimatePrice(
             MAX_MICROBUS_PAX_CAPACITY_AT_LA_PALMA
         )
     } else if (serviceType == ServiceType.SHUTTLE) {
-        const AIRPORT_TRESHOLD = 500;
+        const AIRPORT_TRESHOLD = 1000;
 
         const IS_ORIGIN_AIRPORT = isAirportCloseToCoordinates(originCoordinates, AIRPORT_COORDINATES, AIRPORT_TRESHOLD);
         const IS_DESTINATION_AIRPORT = isAirportCloseToCoordinates(destinationCoordinates, AIRPORT_COORDINATES, AIRPORT_TRESHOLD);
