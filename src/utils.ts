@@ -96,7 +96,7 @@ function calculateExtraPriceGreatherThan9(
                 return basePrice + 48;
             } else if (kilometersHours < 160) {
                 return basePrice + 38.4;
-            } else if (kilometersHours < 240) {
+            } else if (kilometersHours < 250) {
                 return basePrice + 48;
             }  else if (kilometersHours < 380) {
                 return basePrice + 40.8;
@@ -110,7 +110,7 @@ function calculateExtraPriceGreatherThan9(
                 return basePrice + 96;
             } else if (kilometersHours < 160) {
                 return basePrice + 134.4;
-            } else if (kilometersHours < 240) {
+            } else if (kilometersHours < 250) {
                 return basePrice + 129.6;
             }  else if (kilometersHours < 380) {
                 return basePrice + 112.8;
@@ -473,7 +473,7 @@ function calculateExtraPrice1to8(
                 return basePrice + 15.6;
             } else if (kilometersHours < 160) {
                 return basePrice + 10.8;
-            } else if (kilometersHours < 240) {
+            } else if (kilometersHours < 250) {
                 return basePrice + 12;
             } else if (kilometersHours < 380) {
                 return basePrice + 24;
@@ -1087,7 +1087,7 @@ export function calculatePriceKMH(
             } else if (isSpecial) {
                 basePrice = calculatePricesWithTresholds(kilometersHours, [
                     [30, 132],
-                    [70, 144],
+                    [60, 144],
                     [200, 156],
                     [400, 180],
                     [500, 192],
@@ -1100,7 +1100,7 @@ export function calculatePriceKMH(
             } else {
                 basePrice = calculatePricesWithTresholds(kilometersHours, [
                     [30, 132],
-                    [70, 144],
+                    [60, 144],
                     [200, 156],
                     [400, 180],
                     [500, 192],
@@ -1209,8 +1209,8 @@ export function calculatePriceKMH(
             } else {
                 basePrice = calculatePricesWithTresholds(kilometersHours, [
                     [30, 42],
-                    [70, 54],
-                    [100, 60],
+                    [60, 54],
+                    [95, 60],
                     [200, 84],
                     [400, 120],
                     [500, 132],
