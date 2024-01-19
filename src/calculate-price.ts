@@ -2085,6 +2085,10 @@ export async function calculateEstimatePrice(
 
         const IS_ORIGIN_AIRPORT = isAirportCloseToCoordinates(originCoordinates, AIRPORT_COORDINATES, AIRPORT_TRESHOLD);
         const IS_DESTINATION_AIRPORT = isAirportCloseToCoordinates(destinationCoordinates, AIRPORT_COORDINATES, AIRPORT_TRESHOLD);
+
+        console.log('🌈', originCoordinates, IS_ORIGIN_AIRPORT)
+        console.log('🌈', destinationCoordinates, IS_DESTINATION_AIRPORT)
+        console.log('🥑', AIRPORT_COORDINATES, AIRPORT_TRESHOLD)
         
         if (IS_ORIGIN_AIRPORT || IS_DESTINATION_AIRPORT) {
             metadata['serviceType'] = 'Shuttle';
