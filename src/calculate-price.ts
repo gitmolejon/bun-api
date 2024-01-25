@@ -2098,6 +2098,8 @@ export async function calculateEstimatePrice(
 
             const ISLAND_PLACES = await getIslandsPlacesForShuttle();
             const isShuttlePoint = isPlaceSuitableForShuttle(IS_ORIGIN_AIRPORT ? destinationCoordinates : originCoordinates, ISLAND_PLACES[island]);
+
+            console.log('🐌', isShuttlePoint, shuttleAirport)
             if (isShuttlePoint && shuttleAirport) {
 
                 metadata['isShuttlePoint'] = isShuttlePoint;
@@ -2105,14 +2107,16 @@ export async function calculateEstimatePrice(
                 console.log(`🏨 Is Shuttle point`)
 
                 const AIRPORT_PRICES = await getAirportsPricesForShuttle();
+                console.log('🌈', AIRPORT_PRICES)
                 const shuttlePaxPrice = AIRPORT_PRICES[shuttleAirport][isShuttlePoint] || 0;
 
                 if (shuttlePaxPrice.price) {
                     priceWith20 = shuttlePaxPrice.price * pax;
                 }
             }
+        } else {
+            console.log('Is not shuttle...')
         }
-        console.log('Is not shuttle...')
     }
 
     // TODO: Set rate to extraLuggage too

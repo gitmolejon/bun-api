@@ -1394,7 +1394,7 @@ export function isPlaceSuitableForShuttle(
         name: string;
         zone_id: string;
     }[],
-    thresholdInMeters: number = 100
+    thresholdInMeters: number = 300
 ): string | false {
     let closestPlace: {
         coordinates: Coordinates;
