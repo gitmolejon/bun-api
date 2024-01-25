@@ -737,7 +737,6 @@ export function calculateIsLuxury(vehicleType: VehicleType | undefined): boolean
     return vehicleType == VehicleType.LUXURY_CAR || vehicleType == VehicleType.LUXURY_MINIVAN;
 }
 
-// TODO: Check if this is used correctly
 export function calculateIsAdapted(vehicleType: VehicleType | undefined): boolean {
     if (!vehicleType) {
         return false;
