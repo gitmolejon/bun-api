@@ -2107,7 +2107,6 @@ export async function calculateEstimatePrice(
                 console.log(`🏨 Is Shuttle point`)
 
                 const AIRPORT_PRICES = await getAirportsPricesForShuttle();
-                console.log('🌈', AIRPORT_PRICES)
                 const shuttlePaxPrice = AIRPORT_PRICES[shuttleAirport][isShuttlePoint] || 0;
 
                 if (shuttlePaxPrice.price) {
@@ -2132,7 +2131,7 @@ export async function calculateEstimatePrice(
     // TODO: Check when apply rate to extra luggage on shuttle or not.
     if (serviceType == ServiceType.SHUTTLE) {
         luggagePrice = calculatePriceLuggage(luggagePackages);
-    } else if (SPECIAL_PRICE_FTV_IS_ACTIVE && pax >= 9 && pax <= 30 && !isLuxury && !isAdapted) {
+    } else if (SPECIAL_PRICE_FTV_IS_ACTIVE && island == Island.FTV && pax >= 9 && pax <= 30 && !isLuxury && !isAdapted) {
         if (luggagePackages > 0) {
             luggageManipulationPrice = calculatePriceLuggageManipulation(pax, isLuxury, luggagePackages, originCoordinates, destinationCoordinates, LUGGAGE_ZONE_POLYGONS)
         }
@@ -2159,8 +2158,16 @@ export async function calculateEstimatePrice(
     // TODO: Add Taxes
     let taxesRate = calculateTaxes(pax, isLuxury, serviceType);
     metadata['taxes'] = taxesRate;
-    
-    let priceWithTaxes = (luggageManipulationPrice + priceWithRate + luggagePrice) * (1 + taxesRate);
+
+    // TODO: Refactor this to set the 0 at the beggining
+    let priceWithTaxes = 0;
+    if (!(priceWithRate < 1)) {
+        if (island != Island.LP ||
+            (island == Island.LP && !isLuxury)
+        ) {
+            priceWithTaxes = (luggageManipulationPrice + priceWithRate + luggagePrice) * (1 + taxesRate);
+        }
+    }
     metadata['priceWithTaxes'] = priceWithTaxes;
 
 

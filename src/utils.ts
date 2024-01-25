@@ -127,7 +127,7 @@ function calculateExtraPriceGreatherThan9(
             } else {
                 return basePrice + 60;
             }
-        } else if (pax >= 31 && pax <= 55) {
+        } else if (pax <= 55) {
             if (kilometersHours < 480) {
                 return basePrice + 96;
             } else {
@@ -173,7 +173,7 @@ function calculateSpecialExtraPriceGreaterThan9(
             } else {
                 return basePrice + 96;
             }
-        } else if (pax >= 31 && pax <= 55) {
+        } else if (pax <= 55) {
             if (kilometersHours < 480) {
                 return basePrice + 96;
             } else {
