@@ -12,31 +12,186 @@ import {
 import getRouteInfo from "./google-maps-api";
 import Database from "bun:sqlite";
 import { RAW_PLACES, RAW_PRICES } from "./db_data";
+import { AIRPORT_COORDINATES } from "./calculate-price";
+
+const TFS_AIRPORT_POLYGON: Coordinates[] = [
+      [
+        -16.918990621321342,
+        28.326479259437505
+      ],
+      [
+        -16.70664066075534,
+        27.976971926935406
+      ],
+      [
+        -16.494748741827976,
+        28.00394162007906
+      ],
+      [
+        -16.398131914173774,
+        28.198001802264343
+      ],
+      [
+        -16.52366746897573,
+        28.231240292530643
+      ],
+      [
+        -16.561278711132644,
+        28.278289121702272
+      ],
+      [
+        -16.673923761895793,
+        28.328422703639745
+      ],
+      [
+        -16.78334075066408,
+        28.331783517646414
+      ],
+      [
+        -16.831074737798104,
+        28.334658281678713
+      ],
+      [
+        -16.876966340236123,
+        28.32404340252876
+      ],
+      [
+        -16.918990621321342,
+        28.326479259437505
+      ]
+];
 
 function reversePointsOrder(points: Coordinates[]) {
     return points.map(point => [point[1], point[0]]);
 }
 
-function calculateExtraPrice9to18(
+// TODO: Refactor this
+function calculateExtraPriceGreatherThan9(
     pax: number,
     kilometersHours: number,
     basePrice: number,
-    CONSTANT: number
+    island: Island,
+    CONSTANT: number,
+    MAX_MICROBUS_PAX_CAPACITY_AT_LA_PALMA: number = 15,
+    SPECIAL_PRICE_FTV_IS_ACTIVE: boolean = true, // Cuidado!! Esta variable se comporta como constante!!!
+    isReducedPrice: boolean = false,
 ): number {
-    if (pax >= 9 && pax <= 18) {
-        return basePrice;
-    } else if (pax >= 19 && pax <= 30) {
-        return kilometersHours < CONSTANT ? basePrice + 48 : basePrice + 96
-    } else if (pax >= 31 && pax <= 55) {
-        return kilometersHours < CONSTANT ? basePrice + 96 : basePrice + 192
-    } else if (pax >= 56 && pax <= 71) {
-        return kilometersHours < CONSTANT ? basePrice + 132 : basePrice + 264
+    if (island == Island.GC || island == Island.TNF || island == Island.LNZ) {
+        if (pax >= 9 && pax <= 18) {
+            return basePrice;
+        } else if (pax >= 19 && pax <= 30) {
+            return kilometersHours < CONSTANT ? basePrice + 48 : basePrice + 60
+        } else if (pax >= 31 && pax <= 55) {
+            return kilometersHours < CONSTANT ? basePrice + 96 : basePrice + 144
+        } else if (pax >= 56 && pax <= 71) {
+            return kilometersHours < CONSTANT ? basePrice + 132 : basePrice + 264
+        }
+    } else if (island == Island.LP) {
+        if (pax >= 9 && pax <= MAX_MICROBUS_PAX_CAPACITY_AT_LA_PALMA) {
+            return basePrice;
+        } else if (pax > MAX_MICROBUS_PAX_CAPACITY_AT_LA_PALMA && pax <= 30) {
+            if (isReducedPrice) {
+                return basePrice + 38.4;
+            } else if (kilometersHours < 30) {
+                return basePrice + 48;
+            } else if (kilometersHours < 160) {
+                return basePrice + 38.4;
+            } else if (kilometersHours < 250) {
+                return basePrice + 48;
+            }  else if (kilometersHours < 380) {
+                return basePrice + 40.8;
+            } else {
+                return basePrice + 60;
+            }
+        } else if (pax >= 31 && pax <= 55) {
+            if (isReducedPrice) {
+                return basePrice + 86.4;
+            } else if (kilometersHours < 30) {
+                return basePrice + 96;
+            } else if (kilometersHours < 160) {
+                return basePrice + 134.4;
+            } else if (kilometersHours < 250) {
+                return basePrice + 129.6;
+            }  else if (kilometersHours < 380) {
+                return basePrice + 112.8;
+            } else {
+                return basePrice + 144;
+            }
+        }
+    } else if (island == Island.FTV) {
+        if (pax >= 9 && pax <= 18 && !SPECIAL_PRICE_FTV_IS_ACTIVE) {
+            return basePrice;
+        } else if (pax >= 19 && pax <= 30 && !SPECIAL_PRICE_FTV_IS_ACTIVE) {
+            if (kilometersHours < 480) {
+                return basePrice + 48;
+            } else {
+                return basePrice + 60;
+            }
+        } else if (pax <= 55) {
+            if (kilometersHours < 480) {
+                return basePrice + 96;
+            } else {
+                return basePrice + 144;
+            }
+        } else if (pax >= 56 && pax <= 71) {
+            if (kilometersHours < 480) {
+                return basePrice + 132;
+            } else {
+                return basePrice + 264;
+            }
+        }
     }
+
     console.error("Error on _calculateExtraPrice9to18");
     return 0;
 }
 
-function calculatePricesWithTresholds(kilometersHours: number, priceThresholds: PriceThreshold[]) {
+function calculateSpecialExtraPriceGreaterThan9(
+    pax: number,
+    kilometersHours: number,
+    basePrice: number,
+    island: Island,
+    CONSTANT: number,
+    SPECIAL_PRICE_FTV_IS_ACTIVE: boolean = true, // Cuidado!! Esta variable se comporta como constante!!!
+): number {
+    if (island == Island.GC || island == Island.TNF || island == Island.LNZ) {
+        if (pax >= 9 && pax <= 18) {
+            return basePrice;
+        } else if (pax >= 19 && pax <= 30) {
+            return kilometersHours < CONSTANT ? basePrice + 48 : basePrice + 96
+        } else if (pax >= 31 && pax <= 55) {
+            return kilometersHours < CONSTANT ? basePrice + 96 : basePrice + 192
+        } else if (pax >= 56 && pax <= 71) {
+            return kilometersHours < CONSTANT ? basePrice + 132 : basePrice + 264
+        }
+    } else if (island == Island.FTV) {
+        if (pax >= 9 && pax <= 18 && !SPECIAL_PRICE_FTV_IS_ACTIVE) {
+            return basePrice;
+        } else if (pax >= 19 && pax <= 30 && !SPECIAL_PRICE_FTV_IS_ACTIVE) {
+            if (kilometersHours < 480) {
+                return basePrice + 48;
+            } else {
+                return basePrice + 96;
+            }
+        } else if (pax <= 55) {
+            if (kilometersHours < 480) {
+                return basePrice + 96;
+            } else {
+                return basePrice + 192;
+            }
+        } else if (pax >= 56 && pax <= 71) {
+            if (kilometersHours < 480) {
+                return basePrice + 132;
+            } else {
+                return basePrice + 264;
+            }
+        }
+    }
+    console.error("Error on _calculateSpecialExtraPrice9to18");
+    return 0;
+}
+
+export function calculatePricesWithTresholds(kilometersHours: number, priceThresholds: PriceThreshold[]) {
     let basePrice = 0;
     for (let i = 0; i < priceThresholds.length; i++) {
         if (kilometersHours < priceThresholds[i][0]) {
@@ -55,51 +210,279 @@ function calculateExtraPrice1to8(
     kilometersHours: number,
     basePrice: number,
     isLuxury: boolean,
-    FIRST_CONSTANT: number,
-    SECOND_CONSTANT?: number,
+    isAdapted: boolean,
+    island: Island,
+    isReducedPrice: boolean = false,
 ): number {
-    const SECOND_CONSTANT_CALCULATED = SECOND_CONSTANT || FIRST_CONSTANT;
-    if (isLuxury) {
-        if (pax <= 3) {
-            return kilometersHours < FIRST_CONSTANT ? basePrice + 12 : basePrice + 24;
-        } else if (pax <= 6) {
-            if (kilometersHours < 6.5) {
-                return basePrice + 15.6 + 12;
-            } else if (kilometersHours < 50) {
-                return basePrice + 18 + 12;
-            } else if (kilometersHours < FIRST_CONSTANT) {
-                return basePrice + 24 + 12
-            } else {
-                return basePrice + 48 + 24;
+    
+    if (island == Island.GC) {
+        if (isLuxury) {
+            if (pax <= 3) {
+                if (kilometersHours < 355) {
+                    return basePrice + 12;
+                } else if (kilometersHours < 650) {
+                    return basePrice + 24;
+                } else { 
+                    return basePrice + 120;
+                }
+            } else if (pax <= 6) {
+                if (kilometersHours < 355) {
+                    return basePrice + 36;
+                } else if (kilometersHours < 650) {
+                    return basePrice + 72;
+                } else { 
+                    return basePrice + 180;
+                }
+            } else if (pax <= 9) {
+                if (kilometersHours < 355) {
+                    return basePrice + 60;
+                } else if (kilometersHours < 650) {
+                    return basePrice + 120;
+                } else { 
+                    return basePrice + 240;
+                }
             }
-        } else if (pax <= 9) {
-            if (kilometersHours < 6.5) {
-                return basePrice + 15.6 + 24;
-            } else if (kilometersHours < 50) {
-                return basePrice + 18 + 24;
-            } else if (kilometersHours < FIRST_CONSTANT) {
-                return basePrice + 24 + 24
-            } else {
-                return basePrice + 48 + 48;
+        } else if (isAdapted) {
+            if (pax <= 4) {
+                if (kilometersHours < 355) {
+                    return basePrice + 24;
+                } else if (kilometersHours < 650) {
+                    return basePrice + 48;
+                } else { 
+                    return basePrice + 0;
+                }
+            } else if (pax <= 10) {
+                if (kilometersHours < 355) {
+                    return basePrice + 36;
+                } else if (kilometersHours < 650) {
+                    return basePrice + 72;
+                } else { 
+                    return basePrice + 0;
+                }
+            }
+        } else if (pax <= 3) {
+            return basePrice;
+        } else if (pax <= 8) {
+            if (kilometersHours < 355) {
+                return basePrice + 24;
+            } else if (kilometersHours < 650) {
+                return basePrice + 48;
+            } else { 
+                return basePrice + 0;
             }
         }
-    } else {
-        if (pax <= 3) {
+    } else if (island == Island.TNF) {
+        if (isLuxury) {
+            if (pax <= 3) {
+                if (kilometersHours < 700) {
+                    return basePrice + 12;
+                } else if (kilometersHours < 1200) {
+                    return basePrice + 24;
+                } else { 
+                    return basePrice + 120;
+                }
+            } else if (pax <= 6) {
+                if (kilometersHours < 700) {
+                    return basePrice + 36;
+                } else if (kilometersHours < 1200) {
+                    return basePrice + 72;
+                } else { 
+                    return basePrice + 180;
+                }
+            } else if (pax <= 9) {
+                if (kilometersHours < 700) {
+                    return basePrice + 60;
+                } else if (kilometersHours < 1200) {
+                    return basePrice + 120;
+                } else { 
+                    return basePrice + 240;
+                }
+            }
+        } else if (isAdapted) {
+            if (pax <= 4) {
+                if (kilometersHours < 700) {
+                    return basePrice + 24;
+                } else if (kilometersHours < 1200) {
+                    return basePrice + 48;
+                } else { 
+                    return basePrice + 0;
+                }
+            } else if (pax <= 10) {
+                if (kilometersHours < 700) {
+                    return basePrice + 36;
+                } else if (kilometersHours < 1200) {
+                    return basePrice + 72;
+                } else { 
+                    return basePrice + 0;
+                }
+            }
+        } else if (pax <= 3) {
             return basePrice;
-        } else if (pax >= 4 && pax <= 8) {
+        } else if (pax <= 8) {
+            if (kilometersHours < 50) {
+                return basePrice + 18;
+            } else if (kilometersHours < 700) {
+                return basePrice + 24;
+            } else if (kilometersHours < 1200) {
+                return basePrice + 48;
+            } else { 
+                return basePrice + 0;
+            }
+        }
+    } else if (island == Island.FTV) {
+        if (isLuxury) {
+            if (pax <= 3) {
+                if (kilometersHours < 480) {
+                    return basePrice + 12;
+                } else if (kilometersHours < 900) {
+                    return basePrice + 24;
+                } else { 
+                    return basePrice + 120;
+                }
+            } else if (pax <= 6) {
+                if (kilometersHours < 480) {
+                    return basePrice + 36;
+                } else if (kilometersHours < 900) {
+                    return basePrice + 72;
+                } else { 
+                    return basePrice + 180;
+                }
+            } else if (pax <= 9) {
+                if (kilometersHours < 480) {
+                    return basePrice + 60;
+                } else if (kilometersHours < 900) {
+                    return basePrice + 120;
+                } else { 
+                    return basePrice + 240;
+                }
+            }
+        } else if (isAdapted) {
+            if (pax <= 4) {
+                if (kilometersHours < 480) {
+                    return basePrice + 24;
+                } else if (kilometersHours < 900) {
+                    return basePrice + 24;
+                } else { 
+                    return basePrice + 0;
+                }
+            } else if (pax <= 10) {
+                if (kilometersHours < 480) {
+                    return basePrice + 36;
+                } else if (kilometersHours < 900) {
+                    return basePrice + 36;
+                } else { 
+                    return basePrice + 0;
+                }
+            }
+        } else if (pax <= 3) {
+            return basePrice;
+        } else if (pax <= 8) {
             if (kilometersHours < 6.5) {
                 return basePrice + 15.6;
             } else if (kilometersHours < 50) {
                 return basePrice + 18;
-            } else if (kilometersHours < FIRST_CONSTANT) {
-                return basePrice + 24
-            } else if (kilometersHours < SECOND_CONSTANT_CALCULATED) {
-                return basePrice + 42
-            } else {
+            } else if (kilometersHours < 480) {
+                return basePrice + 24;
+            } else if (kilometersHours < 900) {
                 return basePrice + 48;
+            } else { 
+                return basePrice + 0;
+            }
+        }
+    } else if (island == Island.LNZ) {
+        if (isLuxury) {
+            if (pax <= 3) {
+                if (kilometersHours < 130) {
+                    return basePrice + 12;
+                } else if (kilometersHours < 350) {
+                    return basePrice + 24;
+                } else { 
+                    return basePrice + 120;
+                }
+            } else if (pax <= 6) {
+                if (kilometersHours < 130) {
+                    return basePrice + 36;
+                } else if (kilometersHours < 350) {
+                    return basePrice + 72;
+                } else { 
+                    return basePrice + 180;
+                }
+            } else if (pax <= 9) {
+                if (kilometersHours < 130) {
+                    return basePrice + 60;
+                } else if (kilometersHours < 350) {
+                    return basePrice + 120;
+                } else { 
+                    return basePrice + 240;
+                }
+            }
+        } else if (isAdapted) {
+            if (pax <= 4) {
+                if (kilometersHours < 130) {
+                    return basePrice + 24;
+                } else if (kilometersHours < 350) {
+                    return basePrice + 48;
+                } else { 
+                    return basePrice + 0;
+                }
+            } else if (pax <= 10) {
+                if (kilometersHours < 130) {
+                    return basePrice + 36;
+                } else if (kilometersHours < 350) {
+                    return basePrice + 72;
+                } else { 
+                    return basePrice + 0;
+                }
+            }
+        } else if (pax <= 3) {
+            return basePrice;
+        } else if (pax <= 8) {
+            if (kilometersHours < 6.5) {
+                return basePrice + 15.6;
+            } else if (kilometersHours < 50) {
+                return basePrice + 18;
+            } else if (kilometersHours < 130) {
+                return basePrice + 24;
+            } else if (kilometersHours < 350) {
+                return basePrice + 48;
+            } else { 
+                return basePrice + 0;
+            }
+        }
+    } else if (island == Island.LP) {
+        if (isAdapted) {
+            if (pax <= 4) {
+                if (kilometersHours < 380) {
+                    return basePrice + 24;
+                } else { 
+                    return basePrice + 0;
+                }
+            } else if (pax <= 10) {
+                if (kilometersHours < 380) {
+                    return basePrice + 36;
+                } else { 
+                    return basePrice + 0;
+                }
+            }
+        } else if (pax <= 3) {
+            return basePrice;
+        } else if (pax <= 8) {
+            if (isReducedPrice) {
+                return basePrice + 4.8;
+            } else if (kilometersHours < 30) {
+                return basePrice + 15.6;
+            } else if (kilometersHours < 160) {
+                return basePrice + 10.8;
+            } else if (kilometersHours < 250) {
+                return basePrice + 12;
+            } else if (kilometersHours < 380) {
+                return basePrice + 24;
+            } else { 
+                return basePrice + 0;
             }
         }
     }
+
     console.error("Error on _calculateExtraPrice1to8");
     return 0;
 }
@@ -136,15 +519,53 @@ export function calculateZoneLevel(origin: Coordinates, destination: Coordinates
     return ZoneLevel.NORMAL;
 }
 
+function _getRouteClean(route: Coordinates[], AIRPORTS_COORDINATES: { [key in Airport]: Coordinates }): Coordinates[] {
+    
+    const THRESHOLD = 500;
+    const AIRPORT_COORDINATES_CLEAN: { [key in Airport]: Coordinates} = {
+        [Airport.VDE]: [27.81464068896817, -17.885178809445023],
+        [Airport.SPC]: [28.626441158953487, -17.75378635324323],
+        [Airport.GMZ]: [28.03177338852903, -17.212100799762826],
+        [Airport.TFN]: [28.48872315923113, -16.34885169686013],
+        [Airport.TFS]: [28.047899093057506, -16.580980431230326],
+        [Airport.LPA]: [27.9388959758168, -15.39048012794674],
+        [Airport.ACE]: [28.952105225418716, -13.60742572971122],
+        [Airport.FUE]: [28.455070950122455, -13.870963283731854],
+    }
+
+    const newRoute = route.map((point, index) => {
+        if (calculateDistanceBetweenCoordinates(point, AIRPORTS_COORDINATES[Airport.LPA]) < THRESHOLD) {
+            return AIRPORT_COORDINATES_CLEAN[Airport.LPA];
+        } else if (calculateDistanceBetweenCoordinates(point, AIRPORTS_COORDINATES[Airport.TFN]) < THRESHOLD) {
+            return AIRPORT_COORDINATES_CLEAN[Airport.TFN];
+        } else if (calculateDistanceBetweenCoordinates(point, AIRPORTS_COORDINATES[Airport.TFS]) < THRESHOLD) {
+            return AIRPORT_COORDINATES_CLEAN[Airport.TFS];
+        } else if (calculateDistanceBetweenCoordinates(point, AIRPORTS_COORDINATES[Airport.ACE]) < THRESHOLD) {
+            return AIRPORT_COORDINATES_CLEAN[Airport.ACE];
+        } else if (calculateDistanceBetweenCoordinates(point, AIRPORTS_COORDINATES[Airport.FUE]) < THRESHOLD) {
+            return AIRPORT_COORDINATES_CLEAN[Airport.FUE];
+        } else if (calculateDistanceBetweenCoordinates(point, AIRPORTS_COORDINATES[Airport.GMZ]) < THRESHOLD) {
+            return AIRPORT_COORDINATES_CLEAN[Airport.GMZ];
+        } else if (calculateDistanceBetweenCoordinates(point, AIRPORTS_COORDINATES[Airport.SPC]) < THRESHOLD) {
+            return AIRPORT_COORDINATES_CLEAN[Airport.SPC];
+        } else if (calculateDistanceBetweenCoordinates(point, AIRPORTS_COORDINATES[Airport.VDE]) < THRESHOLD) {
+            return AIRPORT_COORDINATES_CLEAN[Airport.VDE];
+        }
+        return point;
+    });
+    return newRoute;
+}
+
 export async function calculateKilometersBetweenPoints(route: Coordinates[], db: Database): Promise<{ kilometers: number, hours: number }> {
-    const result = await getRouteInfoCached(route, db);
+    const routeClean = _getRouteClean(route, AIRPORT_COORDINATES);
+    console.log('🌏 Route clean: ', routeClean)
+    const result = await getRouteInfoCached(routeClean, db);
     return result
 }
 
 export async function calculateNearestAirport(
     origin: Coordinates,
     island: Island,
-    airportCoordinates: { [key in Airport]: Coordinates },
     islandsRoundZonePolygons: Partial<{ [key in Island]: Partial<{ [key in CardinalPoint]: Coordinates[] }> }>,
     db: Database): Promise<Airport> {
 
@@ -160,18 +581,9 @@ export async function calculateNearestAirport(
         if (islandsRoundZonePolygons.TNF?.NORTH && isPointInPolygon(origin, islandsRoundZonePolygons.TNF.NORTH)) {
             return Airport.TFN;
         }
-        try {
-            const [tfnResult, tfsResult] = await Promise.all([
-                getRouteInfoCached([origin, airportCoordinates.TFN], db),
-                getRouteInfoCached([origin, airportCoordinates.TFS], db)
-            ]);
-            if (tfnResult.hours < tfsResult.hours) { // TODO: Check if use hours or km
-                return Airport.TFN;
-            } else {
-                return Airport.TFS;
-            }
-        } catch (e) {
-            console.error("Error on calculateNearestAirport -> ", e);
+        if (isPointInPolygon(origin, TFS_AIRPORT_POLYGON)) {
+            return Airport.TFS;
+        } else {
             return Airport.TFN;
         }
     }
@@ -186,8 +598,10 @@ export function calculateCustomRoute(
     island: Island,
     serviceType: ServiceType,
     nearestAirport: Airport,
+    pax: number,
     airportCoordinates: { [key in Airport]: Coordinates },
-    islandsRoundZonePolygons: Partial<{ [key in Island]: Partial<{ [key in CardinalPoint]: Coordinates[] }> }>): { coordinates: Coordinates[], roundTrip: boolean } {
+    islandsRoundZonePolygons: Partial<{ [key in Island]: Partial<{ [key in CardinalPoint]: Coordinates[] }> }>,
+    ): { coordinates: Coordinates[], roundTrip: boolean } {
 
     var route: Coordinates[] = [];
     var roundTrip: boolean = false;
@@ -198,9 +612,16 @@ export function calculateCustomRoute(
             && islandsRoundZonePolygons.GC.WEST) {
             route.push(airportCoordinates.LPA);
             route.push(origin);
-            if (
-                (isPointInPolygon(origin, islandsRoundZonePolygons.GC.NORTH) && isPointInPolygon(destination, islandsRoundZonePolygons.GC.WEST))
-                || (isPointInPolygon(origin, islandsRoundZonePolygons.GC.WEST) && isPointInPolygon(destination, islandsRoundZonePolygons.GC.NORTH))
+
+            if (origin == destination) {
+                route.push(airportCoordinates.LPA);
+            }
+
+            if (pax > 30 &&
+                (
+                    (isPointInPolygon(origin, islandsRoundZonePolygons.GC.NORTH) && isPointInPolygon(destination, islandsRoundZonePolygons.GC.WEST))
+                    || (isPointInPolygon(origin, islandsRoundZonePolygons.GC.WEST) && isPointInPolygon(destination, islandsRoundZonePolygons.GC.NORTH))
+                )
             ) {
                 console.log('🌏 Round island!');
                 roundTrip = true;
@@ -211,57 +632,78 @@ export function calculateCustomRoute(
         } else if (island == Island.TNF
             && islandsRoundZonePolygons.TNF
             && islandsRoundZonePolygons.TNF.NORTH
-            && islandsRoundZonePolygons.TNF.SOUTH
             && islandsRoundZonePolygons.TNF.WEST) {
-            route.push(airportCoordinates[nearestAirport]);
-            route.push(origin);
-            if (isPointInPolygon(origin, islandsRoundZonePolygons.TNF.NORTH) && isPointInPolygon(destination, islandsRoundZonePolygons.TNF.SOUTH)) {
-                console.log('🌏 Round island!');
-                roundTrip = true;
-                route.push(airportCoordinates.TFN);
-                route.push(destination)
-                route.push(airportCoordinates.TFN);
-            } else if (isPointInPolygon(origin, islandsRoundZonePolygons.TNF.NORTH) && isPointInPolygon(destination, islandsRoundZonePolygons.TNF.WEST)) {
-                console.log('🌏 Round island!');
-                roundTrip = true;
-                route.push(airportCoordinates.TFN);
-                route.push(airportCoordinates.TFS);
-                route.push(destination)
-                route.push(airportCoordinates.TFS);
-                route.push(airportCoordinates.TFN);
-            } else if (isPointInPolygon(origin, islandsRoundZonePolygons.TNF.SOUTH) && isPointInPolygon(destination, islandsRoundZonePolygons.TNF.NORTH)) {
-                console.log('🌏 Round island!');
-                roundTrip = true;
-                route.push(airportCoordinates.TFN);
-                route.push(destination)
-                route.push(airportCoordinates.TFN);
-                route.push(airportCoordinates.TFS);
-            } else if (isPointInPolygon(origin, islandsRoundZonePolygons.TNF.WEST) && isPointInPolygon(destination, islandsRoundZonePolygons.TNF.NORTH)) {
-                console.log('🌏 Round island!');
-                roundTrip = true;
-                route.push(airportCoordinates.TFS);
-                route.push(airportCoordinates.TFN);
-                route.push(destination)
-                route.push(airportCoordinates.TFN);
-                route.push(airportCoordinates.TFS);
+            
+            if (isAirportCloseToCoordinates(destination, airportCoordinates, 500)) {
+                route.push(destination);
+            } else {
+                route.push(airportCoordinates[nearestAirport]);
             }
-            route.push(destination);
-            route.push(airportCoordinates[nearestAirport]);
+
+            route.push(origin);
+
+            if (origin == destination) {
+                route.push(airportCoordinates[nearestAirport]);
+            }
+
+            if (pax > 30 && isPointInPolygon(origin, islandsRoundZonePolygons.TNF.NORTH) && isPointInPolygon(destination, islandsRoundZonePolygons.TNF.WEST)) {
+                console.log('🌏 Round island!');
+                roundTrip = true;
+                route.push(airportCoordinates.TFN);
+                route.push(airportCoordinates.TFS);
+                route.push(destination);
+                route.push(airportCoordinates.TFS);
+                route.push(airportCoordinates.TFN);
+            } else if (pax > 30 && isPointInPolygon(origin, islandsRoundZonePolygons.TNF.WEST) && isPointInPolygon(destination, islandsRoundZonePolygons.TNF.NORTH)) {
+                console.log('🌏 Round island!');
+                roundTrip = true;
+                route.push(airportCoordinates.TFS);
+                route.push(airportCoordinates.TFN);
+                route.push(destination);
+                route.push(airportCoordinates.TFN);
+                route.push(airportCoordinates.TFS);
+            } else {
+                route.push(destination);
+                if (!isAirportCloseToCoordinates(destination, airportCoordinates, 500)) {
+                    route.push(airportCoordinates[nearestAirport]);
+                }
+            }
         } else if (island == Island.FTV) {
             route.push(airportCoordinates.FUE);
             route.push(origin);
+
+            if (origin == destination) {
+                route.push(airportCoordinates.FUE);
+            }
+
             route.push(destination);
             route.push(airportCoordinates.FUE);
         } else if (island == Island.LNZ) {
             route.push(airportCoordinates.ACE);
             route.push(origin);
+
+            if (origin == destination) {
+                route.push(airportCoordinates.ACE);
+            }
+
             route.push(destination);
             route.push(airportCoordinates.ACE);
+        } else if (island == Island.LP) {
+            route.push(airportCoordinates.SPC);
+            route.push(origin);
+
+            if (origin == destination) {
+                route.push(airportCoordinates.SPC);
+            }
+
+            route.push(destination);
+            route.push(airportCoordinates.SPC);
         }
     }
     return { coordinates: route, roundTrip: roundTrip };
 }
 
+// TODO: Check if is necessary to calculate the arrival hours.
 export function calculateDayTime(departureDateTime: Date): DayTime {
     if (departureDateTime.getHours() >= 0 && departureDateTime.getHours() < 6) {
         return DayTime.NIGHT;
@@ -295,10 +737,16 @@ export function calculateIsLuxury(vehicleType: VehicleType | undefined): boolean
     return vehicleType == VehicleType.LUXURY_CAR || vehicleType == VehicleType.LUXURY_MINIVAN;
 }
 
+export function calculateIsAdapted(vehicleType: VehicleType | undefined): boolean {
+    if (!vehicleType) {
+        return false;
+    }
+    return vehicleType == VehicleType.ADAPTED_VEHICLE;
+}
+
 export async function calculateReducedKMH(
     origin: Coordinates,
     destination: Coordinates,
-    island: Island,
     isShuttleZone: boolean,
     db: Database
 ): Promise<{ isReduced: boolean, kilometers: number, hours: number }> {
@@ -307,36 +755,12 @@ export async function calculateReducedKMH(
         const { kilometers, hours } = await calculateKilometersBetweenPoints([origin, destination], db)
         const kilometersHours = kilometers * hours;
 
-        if (island == Island.GC && kilometersHours <= 7) {
+        if (kilometersHours <= 3) {
             return {
                 isReduced: true,
                 kilometers: kilometers,
                 hours: hours
             }
-        } else if (island == Island.TNF && kilometersHours <= 10) {
-            return {
-                isReduced: true,
-                kilometers: kilometers,
-                hours: hours
-            }
-        } else if (island == Island.FTV && kilometersHours <= 10) {
-            return {
-                isReduced: true,
-                kilometers: kilometers,
-                hours: hours
-            }
-        } else if (island == Island.LNZ && kilometersHours <= 20) {
-            return {
-                isReduced: true,
-                kilometers: kilometers,
-                hours: hours
-            }
-        }
-
-        return {
-            isReduced: false,
-            kilometers: 0,
-            hours: 0
         }
     }
 
@@ -352,10 +776,49 @@ export function calculateAtDisposalPrice(
     departureDateTime: Date,
     arrivalDateTime: Date,
     isLuxury: boolean,
+    isAdapted: boolean,
     island: Island,
     zoneLevel: ZoneLevel,
-    MAX_MICROBUS_PAX_CAPACITY_AT_LA_PALMA: number
+    MAX_MICROBUS_PAX_CAPACITY_AT_LA_PALMA: number,
+    SPECIAL_PRICE_FTV_IS_ACTIVE: boolean = true, // Cuidado!! Esta variable se comporta como constante!!!
 ): number {
+
+    // TODO: Limitar maximo de pax en Luxury -> 9, La Palma -> 55 y TNF -> 63, y en La Palma no hay luxury
+
+    // TODO: Pasar a una constante al hacer refactor
+    const TABLE_PRICES = {
+        'medio_dia': {
+            'normal_1_tramo': 240,
+            'normal_2_tramo': 300,
+            'normal_3_tramo': 384,
+            'normal_4_tramo': 504,
+            'vip_1_tramo': 360,
+            'vip_2_tramo': 420,
+            'vip_3_tramo': 480,
+        },
+        'dia_completo': {
+            'normal_1_tramo': 360,
+            'normal_2_tramo': 420,
+            'normal_3_tramo': 504,
+            'normal_4_tramo': 648,
+            'vip_1_tramo': 480,
+            'vip_2_tramo': 600,
+            'vip_3_tramo': 720,
+        },
+        'hora_extra': {
+            'normal_1_tramo': 36,
+            'normal_2_tramo': 48,
+            'normal_3_tramo': 60,
+            'normal_4_tramo': 72,
+            'vip_1_tramo': 36,
+            'vip_2_tramo': 48,
+            'vip_3_tramo': 48,
+        }
+    }
+
+    if (island == Island.FTV && pax >= 9 && pax <= 30 && !isLuxury && !isAdapted && SPECIAL_PRICE_FTV_IS_ACTIVE) {
+        pax = 55;
+    }
 
     const TOTAL_HOURS: number = (arrivalDateTime.getTime() - departureDateTime.getTime()) / 1000 / 60 / 60;
 
@@ -363,121 +826,211 @@ export function calculateAtDisposalPrice(
 
     if (zoneLevel == ZoneLevel.HARD || zoneLevel == ZoneLevel.VERY_HARD) {
         if (isLuxury) {
-            if (pax <= 3) {
-                if (TOTAL_HOURS <= 7) {
-                    return 480;
-                } else {
-                    return 480 + (TOTAL_HOURS - 7) * 36;
+            if (TOTAL_HOURS <= 7) {
+                if (pax <= 3) {
+                    return TABLE_PRICES.dia_completo.vip_1_tramo;
+                } else if (pax <= 6) {
+                    return TABLE_PRICES.dia_completo.vip_2_tramo;
+                } else if (pax <= 9) {
+                    return TABLE_PRICES.dia_completo.vip_3_tramo;
                 }
-            } else if (pax <= 6) {
-                if (TOTAL_HOURS <= 7) {
-                    return 600;
-                } else {
-                    return 600 + (TOTAL_HOURS - 7) * 48;
+            } else if (TOTAL_HOURS <= 11) {
+                const extraHours = Math.ceil(TOTAL_HOURS - 7);
+                if (pax <= 3) {
+                    return TABLE_PRICES.dia_completo.vip_1_tramo + extraHours * TABLE_PRICES.hora_extra.vip_1_tramo;
+                } else if (pax <= 6) {
+                    return TABLE_PRICES.dia_completo.vip_2_tramo + extraHours * TABLE_PRICES.hora_extra.vip_3_tramo;
+                } else if (pax <= 9) {
+                    return TABLE_PRICES.dia_completo.vip_3_tramo + extraHours * TABLE_PRICES.hora_extra.vip_3_tramo;
                 }
-            } else if (pax <= 9) {
-                if (TOTAL_HOURS <= 7) {
-                    return 720;
-                } else {
-                    return 720 + (TOTAL_HOURS - 7) * 48;
+            } else if (TOTAL_HOURS <= 12) {
+                if (pax <= 3) {
+                    return TABLE_PRICES.dia_completo.vip_1_tramo + TABLE_PRICES.medio_dia.vip_1_tramo + TABLE_PRICES.hora_extra.vip_1_tramo;
+                } else if (pax <= 6) {
+                    return TABLE_PRICES.dia_completo.vip_2_tramo + TABLE_PRICES.medio_dia.vip_2_tramo + TABLE_PRICES.hora_extra.vip_2_tramo;
+                } else if (pax <= 9) {
+                    return TABLE_PRICES.dia_completo.vip_3_tramo + TABLE_PRICES.medio_dia.vip_3_tramo + TABLE_PRICES.hora_extra.vip_3_tramo;
+                }
+            } else if (TOTAL_HOURS <= 16) {
+                if (pax <= 3) {
+                    return (TABLE_PRICES.dia_completo.vip_1_tramo * 2) + TABLE_PRICES.hora_extra.vip_1_tramo;
+                } else if (pax <= 6) {
+                    return (TABLE_PRICES.dia_completo.vip_2_tramo * 2) + TABLE_PRICES.hora_extra.vip_2_tramo;
+                } else if (pax <= 9) {
+                    return (TABLE_PRICES.dia_completo.vip_3_tramo * 2) + TABLE_PRICES.hora_extra.vip_3_tramo;
                 }
             }
         } else {
-            if (
-                (pax <= 18 && island != Island.LP)
-                || (pax <= MAX_MICROBUS_PAX_CAPACITY_AT_LA_PALMA && island == Island.LP)
-            ) {
-                if (TOTAL_HOURS <= 7) {
-                    return 360;
-                } else {
-                    return 360 + (TOTAL_HOURS - 7) * 36;
+            if (TOTAL_HOURS <= 7) {
+                if (
+                    (pax <= 18 && island != Island.LP)
+                    || (island == Island.LP && pax <= MAX_MICROBUS_PAX_CAPACITY_AT_LA_PALMA)
+                ) {
+                    return TABLE_PRICES.dia_completo.normal_1_tramo;
+                } else if (pax <= 30) {
+                    return TABLE_PRICES.dia_completo.normal_2_tramo;
+                } else if (pax <= 55) {
+                    return TABLE_PRICES.dia_completo.normal_3_tramo;
+                } else if (pax <= 71) {
+                    return TABLE_PRICES.dia_completo.normal_3_tramo;
                 }
-            } else if (pax <= 30) {
-                if (TOTAL_HOURS <= 7) {
-                    return 420;
-                } else {
-                    return 420 + (TOTAL_HOURS - 7) * 48;
+            } else if (TOTAL_HOURS <= 11) {
+                const extraHours = Math.ceil(TOTAL_HOURS - 7);
+                if (
+                    (pax <= 18 && island != Island.LP)
+                    || (island == Island.LP && pax <= MAX_MICROBUS_PAX_CAPACITY_AT_LA_PALMA)
+                ) {
+                    return TABLE_PRICES.dia_completo.normal_1_tramo + extraHours * TABLE_PRICES.hora_extra.normal_1_tramo;
+                } else if (pax <= 30) {
+                    return TABLE_PRICES.dia_completo.normal_2_tramo + extraHours * TABLE_PRICES.hora_extra.normal_2_tramo;
+                } else if (pax <= 55) {
+                    return TABLE_PRICES.dia_completo.normal_3_tramo + extraHours * TABLE_PRICES.hora_extra.normal_3_tramo;
+                } else if (pax <= 71) {
+                    return TABLE_PRICES.dia_completo.normal_4_tramo + extraHours * TABLE_PRICES.hora_extra.normal_4_tramo;
                 }
-            } else if (pax <= 55) {
-                if (TOTAL_HOURS <= 7) {
-                    return 504;
-                } else {
-                    return 504 + (TOTAL_HOURS - 7) * 60;
+            } else if (TOTAL_HOURS <= 12) {
+                if (
+                    (pax <= 18 && island != Island.LP)
+                    || (island == Island.LP && pax <= MAX_MICROBUS_PAX_CAPACITY_AT_LA_PALMA)
+                ) {
+                    return TABLE_PRICES.dia_completo.normal_1_tramo + TABLE_PRICES.medio_dia.normal_1_tramo + TABLE_PRICES.hora_extra.normal_1_tramo;
+                } else if (pax <= 30) {
+                    return TABLE_PRICES.dia_completo.normal_2_tramo + TABLE_PRICES.medio_dia.normal_2_tramo + TABLE_PRICES.hora_extra.normal_2_tramo;
+                } else if (pax <= 55) {
+                    return TABLE_PRICES.dia_completo.normal_3_tramo + TABLE_PRICES.medio_dia.normal_3_tramo + TABLE_PRICES.hora_extra.normal_3_tramo;
+                } else if (pax <= 71) {
+                    return TABLE_PRICES.dia_completo.normal_4_tramo + TABLE_PRICES.medio_dia.normal_4_tramo + TABLE_PRICES.hora_extra.normal_4_tramo;
                 }
-            } else if (pax <= 71) {
-                if (TOTAL_HOURS <= 7) {
-                    return 648;
-                } else {
-                    return 648 + (TOTAL_HOURS - 7) * 72;
+            } else if (TOTAL_HOURS <= 16) {
+                if (
+                    (pax <= 18 && island != Island.LP)
+                    || (island == Island.LP && pax <= MAX_MICROBUS_PAX_CAPACITY_AT_LA_PALMA)
+                ) {
+                    return (TABLE_PRICES.dia_completo.normal_1_tramo * 2) + TABLE_PRICES.hora_extra.normal_1_tramo;
+                } else if (pax <= 30) {
+                    return (TABLE_PRICES.dia_completo.normal_2_tramo * 2) + TABLE_PRICES.hora_extra.normal_2_tramo;
+                } else if (pax <= 55) {
+                    return (TABLE_PRICES.dia_completo.normal_3_tramo * 2) + TABLE_PRICES.hora_extra.normal_3_tramo;
+                } else if (pax <= 71) {
+                    return (TABLE_PRICES.dia_completo.normal_4_tramo * 2) + TABLE_PRICES.hora_extra.normal_4_tramo;
                 }
             }
         }
     }
 
     if (isLuxury) {
-        if (pax <= 3) {
-            if (TOTAL_HOURS <= 4) {
-                return 360;
-            } else if (TOTAL_HOURS <= 8) {
-                return 480;
-            } else {
-                return 480 + (TOTAL_HOURS - 8) * 36;
+        if (TOTAL_HOURS <= 4) {
+            if (pax <= 3) {
+                return TABLE_PRICES.medio_dia.vip_1_tramo;
+            } else if (pax <= 6) {
+                return TABLE_PRICES.medio_dia.vip_2_tramo;
+            } else if (pax <= 9) {
+                return TABLE_PRICES.medio_dia.vip_3_tramo;
             }
-        } else if (pax <= 6) {
-            if (TOTAL_HOURS <= 4) {
-                return 420;
-            } else if (TOTAL_HOURS <= 8) {
-                return 600;
-            } else {
-                return 600 + (TOTAL_HOURS - 8) * 48;
+        } else if (TOTAL_HOURS <= 8) {
+            if (pax <= 3) {
+                return TABLE_PRICES.dia_completo.vip_1_tramo;
+            } else if (pax <= 6) {
+                return TABLE_PRICES.dia_completo.vip_2_tramo;
+            } else if (pax <= 9) {
+                return TABLE_PRICES.dia_completo.vip_3_tramo;
             }
-        } else if (pax <= 9) {
-            if (TOTAL_HOURS <= 4) {
-                return 480;
-            } else if (TOTAL_HOURS <= 8) {
-                return 720;
-            } else {
-                return 720 + (TOTAL_HOURS - 8) * 48;
+        } else if (TOTAL_HOURS <= 11) {
+            const extraHours = Math.ceil(TOTAL_HOURS - 8);
+            if (pax <= 3) {
+                return TABLE_PRICES.dia_completo.vip_1_tramo + extraHours * TABLE_PRICES.hora_extra.vip_1_tramo;
+            } else if (pax <= 6) {
+                return TABLE_PRICES.dia_completo.vip_2_tramo + extraHours * TABLE_PRICES.hora_extra.vip_3_tramo;
+            } else if (pax <= 9) {
+                return TABLE_PRICES.dia_completo.vip_3_tramo + extraHours * TABLE_PRICES.hora_extra.vip_3_tramo;
+            }
+        } else if (TOTAL_HOURS <= 12) {
+            if (pax <= 3) {
+                return TABLE_PRICES.dia_completo.vip_1_tramo + TABLE_PRICES.medio_dia.vip_1_tramo;
+            } else if (pax <= 6) {
+                return TABLE_PRICES.dia_completo.vip_2_tramo + TABLE_PRICES.medio_dia.vip_2_tramo;
+            } else if (pax <= 9) {
+                return TABLE_PRICES.dia_completo.vip_3_tramo + TABLE_PRICES.medio_dia.vip_3_tramo;
+            }
+        } else if (TOTAL_HOURS <= 16) {
+            if (pax <= 3) {
+                return TABLE_PRICES.dia_completo.vip_1_tramo * 2;
+            } else if (pax <= 6) {
+                return TABLE_PRICES.dia_completo.vip_2_tramo * 2;
+            } else if (pax <= 9) {
+                return TABLE_PRICES.dia_completo.vip_3_tramo * 2;
             }
         }
     } else {
-        if (
-            (pax <= 18 && island != Island.LP)
-            || (pax <= MAX_MICROBUS_PAX_CAPACITY_AT_LA_PALMA && island == Island.LP)
-        ) {
-            if (TOTAL_HOURS <= 4) {
-                return 240;
-            } else if (TOTAL_HOURS <= 8) {
-                return 360;
-            } else {
-                return 360 + (TOTAL_HOURS - 8) * 36;
+        if (TOTAL_HOURS <= 4) {
+            if (
+                (pax <= 18 && island != Island.LP)
+                || (island == Island.LP && pax <= MAX_MICROBUS_PAX_CAPACITY_AT_LA_PALMA)
+            ) {
+                return TABLE_PRICES.medio_dia.normal_1_tramo;
+            } else if (pax <= 30) {
+                return TABLE_PRICES.medio_dia.normal_2_tramo;
+            } else if (pax <= 55) {
+                return TABLE_PRICES.medio_dia.normal_3_tramo;
+            } else if (pax <= 71) {
+                return TABLE_PRICES.medio_dia.normal_4_tramo;
             }
-        } else if (pax <= 30) {
-            if (TOTAL_HOURS <= 4) {
-                return 300;
-            } else if (TOTAL_HOURS <= 8) {
-                return 420;
-            } else {
-                return 420 + (TOTAL_HOURS - 8) * 48;
+        } else if (TOTAL_HOURS <= 8) {
+            if (
+                (pax <= 18 && island != Island.LP)
+                || (island == Island.LP && pax <= MAX_MICROBUS_PAX_CAPACITY_AT_LA_PALMA)
+            ) {
+                return TABLE_PRICES.dia_completo.normal_1_tramo;
+            } else if (pax <= 30) {
+                return TABLE_PRICES.dia_completo.normal_2_tramo;
+            } else if (pax <= 55) {
+                return TABLE_PRICES.dia_completo.normal_3_tramo;
+            } else if (pax <= 71) {
+                return TABLE_PRICES.dia_completo.normal_4_tramo;
             }
-        } else if (pax <= 55) {
-            if (TOTAL_HOURS <= 4) {
-                return 384;
-            } else if (TOTAL_HOURS <= 8) {
-                return 504;
-            } else {
-                return 504 + (TOTAL_HOURS - 8) * 60;
+        } else if (TOTAL_HOURS <= 11) {
+            const extraHours = Math.ceil(TOTAL_HOURS - 8);
+            if (
+                (pax <= 18 && island != Island.LP)
+                || (island == Island.LP && pax <= MAX_MICROBUS_PAX_CAPACITY_AT_LA_PALMA)
+            ) {
+                return TABLE_PRICES.dia_completo.normal_1_tramo + (extraHours * TABLE_PRICES.hora_extra.normal_1_tramo);
+            } else if (pax <= 30) {
+                return TABLE_PRICES.dia_completo.normal_2_tramo + (extraHours * TABLE_PRICES.hora_extra.normal_2_tramo);
+            } else if (pax <= 55) {
+                return TABLE_PRICES.dia_completo.normal_3_tramo + (extraHours * TABLE_PRICES.hora_extra.normal_3_tramo);
+            } else if (pax <= 71) {
+                return TABLE_PRICES.dia_completo.normal_4_tramo + (extraHours * TABLE_PRICES.hora_extra.normal_4_tramo);
             }
-        } else if (pax <= 71) {
-            if (TOTAL_HOURS <= 4) {
-                return 504;
-            } else if (TOTAL_HOURS <= 8) {
-                return 648;
-            } else {
-                return 648 + (TOTAL_HOURS - 8) * 72;
+        } else if (TOTAL_HOURS <= 12) {
+            if (
+                (pax <= 18 && island != Island.LP)
+                || (island == Island.LP && pax <= MAX_MICROBUS_PAX_CAPACITY_AT_LA_PALMA)
+            ) {
+                return TABLE_PRICES.dia_completo.normal_1_tramo + TABLE_PRICES.medio_dia.normal_1_tramo;
+            } else if (pax <= 30) {
+                return TABLE_PRICES.dia_completo.normal_2_tramo + TABLE_PRICES.medio_dia.normal_2_tramo;
+            } else if (pax <= 55) {
+                return TABLE_PRICES.dia_completo.normal_3_tramo + TABLE_PRICES.medio_dia.normal_3_tramo;
+            } else if (pax <= 71) {
+                return TABLE_PRICES.dia_completo.normal_4_tramo + TABLE_PRICES.medio_dia.normal_4_tramo;
             }
-        }
+        } else if (TOTAL_HOURS <= 16) {
+            if (
+                (pax <= 18 && island != Island.LP)
+                || (island == Island.LP && pax <= MAX_MICROBUS_PAX_CAPACITY_AT_LA_PALMA)
+            ) {
+                return TABLE_PRICES.dia_completo.normal_1_tramo * 2;
+            } else if (pax <= 30) {
+                return TABLE_PRICES.dia_completo.normal_2_tramo * 2;
+            } else if (pax <= 55) {
+                return TABLE_PRICES.dia_completo.normal_3_tramo * 2;
+            } else if (pax <= 71) {
+                return TABLE_PRICES.dia_completo.normal_4_tramo * 2;
+            }
+        } 
     }
+
     return 0;
 }
 
@@ -487,146 +1040,144 @@ export function calculatePriceKMH(
     nearestAiport: Airport,
     isLuxury: boolean,
     isReducedPrice: boolean,
+    isAdapted: boolean,
+    isSpecial: boolean,
+    MAX_MICROBUS_PAX_CAPACITY_AT_LA_PALMA: number
 ): number {
 
     let basePrice: number = 0;
 
-    if (pax >= 9) {
+    if (pax >= 9 && !isLuxury && !isAdapted) {
 
         if (nearestAiport == Airport.LPA) {
 
             if (isReducedPrice) {
                 basePrice = 132
-            } else {
+            } else if (isSpecial) {
                 basePrice = calculatePricesWithTresholds(kilometersHours, [
-                    [90, 132],
-                    [145, 144],
-                    [200, 156],
-                    [275, 168],
-                    [300, 180],
-                    [320, 204],
-                    [340, 240],
-                    [400, 264],
+                    [80, 132],
+                    [120, 144],
+                    [225, 156],
+                    [300, 168],
+                    [355, 180],
                     [450, 288],
-                    [500, 300],
-                    [600, 312],
-                    [700, 324],
-                    [800, 336],
-                    [960, 348],
-                    [Infinity, 360]
+                    [550, 312],
+                    [650, 324],
+                    [Infinity, 324]
+                ])
+                return calculateSpecialExtraPriceGreaterThan9(pax, kilometersHours, basePrice, Island.GC,  355);
+            } else {
+                basePrice = calculatePricesWithTresholds(kilometersHours, [
+                    [80, 132],
+                    [120, 144],
+                    [225, 156],
+                    [300, 168],
+                    [355, 180],
+                    [Infinity, 240]
                 ])
             }
 
-            return calculateExtraPrice9to18(pax, kilometersHours, basePrice, 355);
+            return calculateExtraPriceGreatherThan9(pax, kilometersHours, basePrice, Island.GC, 355);
 
-        } else if (nearestAiport == Airport.TFN) {
-
-            if (isReducedPrice) {
-                if (kilometersHours <= 5) {
-                    basePrice = 120;
-                } else if (kilometersHours <= 10) {
-                    basePrice = 132
-                }
-            } else {
-                basePrice = calculatePricesWithTresholds(kilometersHours, [
-                    [15, 120],
-                    [40, 132],
-                    [60, 138],
-                    [90, 144],
-                    [150, 156],
-                    [200, 168],
-                    [350, 180],
-                    [450, 192],
-                    [550, 204],
-                    [650, 240],
-                    [750, 276],
-                    [850, 312],
-                    [960, 342],
-                    [Infinity, 360]
-                ])
-            }
-
-            return calculateExtraPrice9to18(pax, kilometersHours, basePrice, 700);
-
-        } else if (nearestAiport == Airport.TFS) {
+        } else if (nearestAiport == Airport.TFN || nearestAiport == Airport.TFS) {
 
             if (isReducedPrice) {
-                if (kilometersHours <= 5) {
-                    basePrice = 120;
-                } else if (kilometersHours <= 10) {
-                    basePrice = 132
-                }
-            } else {
+                basePrice = 120;
+            } else if (isSpecial) {
                 basePrice = calculatePricesWithTresholds(kilometersHours, [
-                    [12, 120],
                     [30, 132],
-                    [70, 144],
+                    [60, 144],
                     [200, 156],
-                    [350, 168],
-                    [550, 180],
-                    [650, 240],
-                    [750, 288],
-                    [960, 336],
-                    [Infinity, 360]
+                    [400, 180],
+                    [500, 192],
+                    [700, 204],
+                    [1000, 276],
+                    [1200, 300],
+                    [Infinity, 312]
+                ]);
+                return calculateSpecialExtraPriceGreaterThan9(pax, kilometersHours, basePrice, Island.TNF, 700);
+            } else {
+                basePrice = calculatePricesWithTresholds(kilometersHours, [
+                    [30, 132],
+                    [60, 144],
+                    [200, 156],
+                    [400, 180],
+                    [500, 192],
+                    [700, 204],
+                    [Infinity, 240]
                 ])
             }
 
-            return calculateExtraPrice9to18(pax, kilometersHours, basePrice, 600);
+            return calculateExtraPriceGreatherThan9(pax, kilometersHours, basePrice, Island.TNF, 700);
 
         } else if (nearestAiport == Airport.ACE) {
 
             if (isReducedPrice) {
-                if (kilometersHours <= 20) {
-                    basePrice = 120;
-                }
+                basePrice = 120;
+            } else if (isSpecial) {
+                basePrice = calculatePricesWithTresholds(kilometersHours, [
+                    [30, 120],
+                    [130, 156],
+                    [250, 276],
+                    [350, 312],
+                    [Infinity, 312]
+                ]);
+                return calculateSpecialExtraPriceGreaterThan9(pax, kilometersHours, basePrice, Island.LNZ, 130);
             } else {
                 basePrice = calculatePricesWithTresholds(kilometersHours, [
                     [30, 120],
-                    [45, 132],
-                    [60, 144],
-                    [100, 156],
-                    [115, 180],
-                    [130, 204],
-                    [200, 240],
-                    [250, 264],
-                    [300, 288],
-                    [350, 312],
-                    [600, 336],
-                    [Infinity, 360]
+                    [130, 156],
+                    [Infinity, 240]
                 ])
             }
 
-            return calculateExtraPrice9to18(pax, kilometersHours, basePrice, 120);
+            return calculateExtraPriceGreatherThan9(pax, kilometersHours, basePrice, Island.LNZ, 130);
 
         } else if (nearestAiport == Airport.FUE) {
 
             if (isReducedPrice) {
-                if (kilometersHours <= 7) {
-                    basePrice = 120;
-                } else if (kilometersHours <= 10) {
-                    basePrice = 132;
-                }
+                basePrice = 120;
+            } else if (isSpecial) {
+                basePrice = calculatePricesWithTresholds(kilometersHours, [
+                    [50, 120],
+                    [100, 132],
+                    [160, 156],
+                    [300, 168],
+                    [480, 180],
+                    [650, 300],
+                    [900, 312],
+                    [Infinity, 312]
+                ]);
+                return calculateSpecialExtraPriceGreaterThan9(pax, kilometersHours, basePrice, Island.FTV, 480);
             } else {
                 basePrice = calculatePricesWithTresholds(kilometersHours, [
-                    [15, 120],
-                    [114, 132],
-                    [190, 156],
+                    [50, 120],
+                    [100, 132],
+                    [160, 156],
                     [300, 168],
-                    [420, 180],
-                    [450, 192],
-                    [480, 204],
-                    [510, 216],
-                    [540, 240],
-                    [570, 264],
-                    [600, 288],
-                    [650, 300],
-                    [850, 312],
-                    [960, 330],
-                    [Infinity, 360]
+                    [480, 180],
+                    [Infinity, 240]
                 ])
             }
 
-            return calculateExtraPrice9to18(pax, kilometersHours, basePrice, 600);
+            return calculateExtraPriceGreatherThan9(pax, kilometersHours, basePrice, Island.FTV, 480);
+
+        } else if (nearestAiport == Airport.SPC) {
+
+            if (isReducedPrice) {
+                basePrice = 50.4;
+            } else {
+                basePrice = calculatePricesWithTresholds(kilometersHours, [
+                    [30, 120],
+                    [50, 144],
+                    [160, 172.8],
+                    [250, 180],
+                    [380, 211.2],
+                    [Infinity, 240]
+                ])
+            }
+
+            return calculateExtraPriceGreatherThan9(pax, kilometersHours, basePrice, Island.LP, 380, MAX_MICROBUS_PAX_CAPACITY_AT_LA_PALMA, isReducedPrice);
 
         }
 
@@ -637,128 +1188,88 @@ export function calculatePriceKMH(
                 basePrice = 48
             } else {
                 basePrice = calculatePricesWithTresholds(kilometersHours, [
-                    [90, 48],
-                    [145, 60],
-                    [200, 72],
-                    [275, 84],
-                    [300, 96],
-                    [340, 108],
+                    [80, 48],
+                    [120, 60],
+                    [225, 72],
+                    [300, 84],
+                    [355, 96],
+                    [450, 120],
+                    [550, 144],
+                    [650, 156],
+                    [Infinity, 240]
+                ])
+            }
+
+            return calculateExtraPrice1to8(pax, kilometersHours, basePrice, isLuxury, isAdapted, Island.GC);
+        } else if (nearestAiport == Airport.TFN || nearestAiport == Airport.TFS) {
+
+            if (isReducedPrice) {
+                basePrice = 36;
+            } else {
+                basePrice = calculatePricesWithTresholds(kilometersHours, [
+                    [30, 42],
+                    [60, 54],
+                    [95, 60],
+                    [200, 84],
                     [400, 120],
                     [500, 132],
-                    [600, 144],
-                    [700, 156],
-                    [800, 168],
-                    [Infinity, 180]
-                ])
+                    [700, 144],
+                    [1000, 156],
+                    [1200, 168],
+                    [Infinity, 240]
+                ]);
             }
 
-            return calculateExtraPrice1to8(pax, kilometersHours, basePrice, isLuxury, 355);
-        } else if (nearestAiport == Airport.TFN) {
-
-            if (isReducedPrice) {
-                if (kilometersHours <= 5) {
-                    basePrice = 36;
-                } else if (kilometersHours <= 10) {
-                    basePrice = 42
-                }
-            } else {
-                basePrice = calculatePricesWithTresholds(kilometersHours, [
-                    [15, 36],
-                    [40, 42],
-                    [60, 48],
-                    [90, 60],
-                    [150, 84],
-                    [200, 96],
-                    [250, 108],
-                    [350, 120],
-                    [450, 132],
-                    [650, 144],
-                    [750, 156],
-                    [850, 168],
-                    [Infinity, 180]
-                ])
-            }
-
-            return calculateExtraPrice1to8(pax, kilometersHours, basePrice, isLuxury, 700);
-        } else if (nearestAiport == Airport.TFS) {
-
-            if (isReducedPrice) {
-                if (kilometersHours <= 5) {
-                    basePrice = 36;
-                } else if (kilometersHours <= 10) {
-                    basePrice = 42
-                }
-            } else {
-                basePrice = calculatePricesWithTresholds(kilometersHours, [
-                    [12, 36],
-                    [30, 42],
-                    [70, 54],
-                    [120, 60],
-                    [150, 72],
-                    [300, 84],
-                    [350, 108],
-                    [550, 120],
-                    [650, 132],
-                    [750, 144],
-                    [850, 156],
-                    [960, 168],
-                    [Infinity, 180]
-                ])
-            }
-
-            return calculateExtraPrice1to8(pax, kilometersHours, basePrice, isLuxury, 600);
+            return calculateExtraPrice1to8(pax, kilometersHours, basePrice, isLuxury, isAdapted, Island.TNF);
         } else if (nearestAiport == Airport.ACE) {
 
             if (isReducedPrice) {
-                if (kilometersHours <= 7) {
-                    basePrice = 32.4;
-                } else if (kilometersHours <= 20) {
-                    basePrice = 36;
-                }
+                basePrice = 32.4;
             } else {
                 basePrice = calculatePricesWithTresholds(kilometersHours, [
-                    [15, 32],
                     [30, 36],
-                    [60, 48],
-                    [100, 60],
-                    [115, 72],
-                    [130, 84],
-                    [200, 96],
-                    [300, 108],
+                    [130, 60],
+                    [250, 96],
                     [350, 120],
-                    [600, 144],
-                    [Infinity, 180]
-                ])
+                    [Infinity, 240]
+                ]);
             }
 
-            return calculateExtraPrice1to8(pax, kilometersHours, basePrice, isLuxury, 120, 180);
+            return calculateExtraPrice1to8(pax, kilometersHours, basePrice, isLuxury, isAdapted, Island.LNZ);
         } else if (nearestAiport == Airport.FUE) {
 
             if (isReducedPrice) {
-                if (kilometersHours <= 7) {
-                    basePrice = 32.4;
-                } else if (kilometersHours <= 20) {
-                    basePrice = 36;
-                }
+                basePrice = 32.4;
             } else {
                 basePrice = calculatePricesWithTresholds(kilometersHours, [
-                    [15, 32.4],
-                    [50, 46],
-                    [114, 60],
-                    [150, 72],
-                    [190, 84],
-                    [230, 96],
+                    [50, 32.4],
+                    [100, 60],
+                    [160, 72],
                     [300, 108],
-                    [420, 120],
-                    [480, 132],
-                    [540, 144],
-                    [600, 156],
+                    [480, 120],
                     [650, 168],
-                    [Infinity, 180]
+                    [900, 180],
+                    [Infinity, 240]
+                ]);
+            }
+
+            return calculateExtraPrice1to8(pax, kilometersHours, basePrice, isLuxury, isAdapted, Island.FTV);
+        } else if (nearestAiport == Airport.SPC) {
+
+            if (isReducedPrice) {
+                basePrice = 14.4;
+            } else {
+                basePrice = calculatePricesWithTresholds(kilometersHours, [
+                    [30, 32.4],
+                    [50, 54],
+                    [160, 66],
+                    [250, 90],
+                    [380, 120],
+                    [Infinity, 240]
                 ])
             }
 
-            return calculateExtraPrice1to8(pax, kilometersHours, basePrice, isLuxury, 600);
+            return calculateExtraPrice1to8(pax, kilometersHours, basePrice, isLuxury, isAdapted, Island.LP);
         }
 
     }
@@ -770,79 +1281,53 @@ export function calculatePriceKMH(
 export function calculateModelPrice(
     zoneLevel: ZoneLevel,
     pax: number,
-    dayTime: DayTime,
     island: Island,
     isLuxury: boolean,
     kilometersHours: number,
     nearestAirport: Airport,
     isReduced: boolean,
+    isAdapted: boolean,
+    isSpecial: boolean,
     MAX_MICROBUS_PAX_CAPACITY_AT_LA_PALMA: number
 ) {
-    const datetimeNow: Date = new Date();
-    const datetimeNowPlus4Hours: Date = new Date(datetimeNow.getTime() + (4 * 60 * 60 * 1000));
 
-    let referencePrice: number = 0;
-    if (pax <= 3) {
-        referencePrice = 144;
-    } else if (pax <= 8) {
-        referencePrice = 144 + 48;
-    } else {
-        referencePrice = calculateAtDisposalPrice(pax, datetimeNow, datetimeNowPlus4Hours, isLuxury, island, ZoneLevel.NORMAL, MAX_MICROBUS_PAX_CAPACITY_AT_LA_PALMA);
-    }
-
-    let priceKMH: number = calculatePriceKMH(pax, kilometersHours, nearestAirport, isLuxury, isReduced);
-
-    let extraNightPrice: number = 0;
-    if (dayTime == DayTime.NIGHT) {
-        if (isLuxury) {
-            if (pax <= 3) {
-                extraNightPrice = 36;
-            } else {
-                extraNightPrice = 48;
-            }
-        } else {
-            if (
-                (pax <= 18 && island != Island.LP)
-                || (pax <= MAX_MICROBUS_PAX_CAPACITY_AT_LA_PALMA && island == Island.LP)
-            ) {
-                extraNightPrice = 36;
-            } else if (pax <= 30) {
-                extraNightPrice = 48;
-            } else if (pax <= 55) {
-                extraNightPrice = 60;
-            } else if (pax <= 71) {
-                extraNightPrice = 72;
-            }
-        }
-    }
-
-    referencePrice = referencePrice + extraNightPrice;
-    priceKMH = priceKMH + extraNightPrice;
+    let priceKMH: number = calculatePriceKMH(pax, kilometersHours, nearestAirport, isLuxury, isReduced, isAdapted, isSpecial, MAX_MICROBUS_PAX_CAPACITY_AT_LA_PALMA);
 
     if (zoneLevel == ZoneLevel.HARD || zoneLevel == ZoneLevel.VERY_HARD) {
-        if (island == Island.GC && kilometersHours < 350) {
-            return referencePrice;
-        } else {
-            return priceKMH > referencePrice ? priceKMH : referencePrice;
-        }
-    } else {
-        return priceKMH;
-    }
+        const datetimeNow: Date = new Date();
+        const datetimeNowPlus4Hours: Date = new Date(datetimeNow.getTime() + (4 * 60 * 60 * 1000));
+        let referencePrice: number = calculateAtDisposalPrice(pax, datetimeNow, datetimeNowPlus4Hours, isLuxury, isAdapted, island, ZoneLevel.NORMAL, MAX_MICROBUS_PAX_CAPACITY_AT_LA_PALMA);
+
+        return priceKMH > referencePrice ? priceKMH : referencePrice;
+    } 
+
+    return priceKMH;
 }
 
-export function calculatePriceLuggage(pax: number, isLuxury: boolean, otherLuggage: number, extraLuggage: number, originCoordinates: Coordinates, destinationCoordinates: Coordinates, LUGGAGE_ZONE_POLYGONS: Coordinates[][]): number {
-    let price: number = 0;
-    const isLuggageZone = isPointInAnyPolygon(originCoordinates, LUGGAGE_ZONE_POLYGONS) || isPointInAnyPolygon(destinationCoordinates, LUGGAGE_ZONE_POLYGONS);
-    if (isLuggageZone || extraLuggage > 0) {
+export function calculatePriceLuggage(luggage: number): number {
+    return luggage * 12;
+}
+
+export function calculatePriceLuggageManipulation(pax: number, isLuxury: boolean, luggage: number, originCoordinates: Coordinates, destinationCoordinates: Coordinates, LUGGAGE_ZONE_POLYGONS: Coordinates[][]) {
+    if (luggage > 0) {
         if (pax <= 8 || isLuxury) {
-            price += 5;
+            return 5;
         } else {
-            price += 10;
+            return 10;
         }
     }
-    price += (extraLuggage + otherLuggage) * 13;
 
-    return price;
+    const isLuggageZone = isPointInAnyPolygon(originCoordinates, LUGGAGE_ZONE_POLYGONS) || isPointInAnyPolygon(destinationCoordinates, LUGGAGE_ZONE_POLYGONS);
+
+    if (isLuggageZone) {
+        if (pax <= 8 || isLuxury) {
+            return 5;
+        } else {
+            return 10;
+        }
+    }
+
+    return 0;
 }
 
 export function calculateIslandFromCoordinates(coordinates: Coordinates, ISLANDS_POLYGONS: { [key in Island]: Coordinates[] }): Island | undefined {
@@ -909,7 +1394,7 @@ export function isPlaceSuitableForShuttle(
         name: string;
         zone_id: string;
     }[],
-    thresholdInMeters: number = 100
+    thresholdInMeters: number = 300
 ): string | false {
     let closestPlace: {
         coordinates: Coordinates;
@@ -980,9 +1465,9 @@ export async function getAirportsPricesForShuttle(): Promise<{ [key in Airport]:
         [Airport.GMZ]: {},
     };
 
-    data.forEach((item: { island: string; airport_id: number; zone_id: number; airport: string; zone_name: string; price: string | null }) => {
+    data.forEach((item: { island: string; airport_id: number; zone_id: number; airport: string; zone_name: string; price: number | null }) => {
         try {
-            let price = item.price !== null ? parseFloat(item.price.replace(',', '.')) : 0;
+            let price = item.price !== null ? item.price : 0;
             transformedData[item.airport as Airport][item.zone_id] = {
                 price: price,
                 zone_name: item.zone_name
@@ -993,4 +1478,17 @@ export async function getAirportsPricesForShuttle(): Promise<{ [key in Airport]:
     });
 
     return transformedData;
+}
+
+export function calculateTaxes(pax: number, isLuxury: boolean, serviceType: ServiceType): number {
+    if (serviceType == ServiceType.A_DISPOSICION) {
+        return 0.07;
+    }
+    if (serviceType == ServiceType.SHUTTLE) {
+        return 0.03;
+    }
+    if (pax <= 8 || (pax <= 9 && isLuxury)) {
+        return 0.07;
+    }
+    return 0.03
 }
